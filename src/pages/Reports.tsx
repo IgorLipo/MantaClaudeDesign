@@ -106,11 +106,11 @@ function ReportCard({
 
   const getPeriodLabel = (period: string) => {
     const labels: Record<string, string> = {
-      "q1-2024": "Q1 2024",
-      "q2-2024": "Q2 2024",
-      "q3-2024": "Q3 2024",
-      "q4-2024": "Q4 2024",
-      "ytd-2024": "YTD 2024",
+      "q1-2026": "Q1 2026",
+      "q2-2026": "Q2 2026",
+      "q3-2026": "Q3 2026",
+      "q4-2026": "Q4 2026",
+      "ytd-2026": "YTD 2026",
     };
     return labels[period] || period.toUpperCase();
   };

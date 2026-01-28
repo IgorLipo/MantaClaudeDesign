@@ -22,10 +22,10 @@ interface KPIDetailModalProps {
 }
 
 const historicalData = [
-  { period: 'Q1 2024', value: '-', change: '-' },
-  { period: 'Q2 2024', value: '-', change: '-' },
-  { period: 'Q3 2024', value: '-', change: '-' },
-  { period: 'Q4 2024', value: '-', change: '-' },
+  { period: 'Q1 2026', value: '-', change: '-' },
+  { period: 'Q2 2026', value: '-', change: '-' },
+  { period: 'Q3 2026', value: '-', change: '-' },
+  { period: 'Q4 2026', value: '-', change: '-' },
 ];
 
 const kpiDetails: Record<string, { description: string; target: string; history: typeof historicalData }> = {
@@ -33,40 +33,40 @@ const kpiDetails: Record<string, { description: string; target: string; history:
     description: 'Annual Recurring Revenue represents predictable revenue from subscriptions.',
     target: '$3.2M by EOY',
     history: [
-      { period: 'Q1 2024', value: '$2.1M', change: '+8%' },
-      { period: 'Q2 2024', value: '$2.4M', change: '+14%' },
-      { period: 'Q3 2024', value: '$2.8M', change: '+17%' },
-      { period: 'Q4 2024 (Proj)', value: '$3.1M', change: '+11%' },
+      { period: 'Q1 2026', value: '$2.1M', change: '+8%' },
+      { period: 'Q2 2026', value: '$2.4M', change: '+14%' },
+      { period: 'Q3 2026', value: '$2.8M', change: '+17%' },
+      { period: 'Q4 2026 (Proj)', value: '$3.1M', change: '+11%' },
     ],
   },
   'Gross Margin': {
     description: 'Revenue remaining after deducting direct costs of goods sold.',
     target: '80% by Q4',
     history: [
-      { period: 'Q1 2024', value: '74%', change: '-' },
-      { period: 'Q2 2024', value: '76%', change: '+2pp' },
-      { period: 'Q3 2024', value: '78%', change: '+2pp' },
-      { period: 'Q4 2024 (Proj)', value: '80%', change: '+2pp' },
+      { period: 'Q1 2026', value: '74%', change: '-' },
+      { period: 'Q2 2026', value: '76%', change: '+2pp' },
+      { period: 'Q3 2026', value: '78%', change: '+2pp' },
+      { period: 'Q4 2026 (Proj)', value: '80%', change: '+2pp' },
     ],
   },
   'LTV:CAC': {
     description: 'Lifetime Value to Customer Acquisition Cost ratio measures unit economics.',
-    target: '5.0x by 2025',
+    target: '5.0x by 2027',
     history: [
-      { period: 'Q1 2024', value: '3.2x', change: '-' },
-      { period: 'Q2 2024', value: '3.6x', change: '+0.4x' },
-      { period: 'Q3 2024', value: '4.1x', change: '+0.5x' },
-      { period: 'Q4 2024 (Proj)', value: '4.5x', change: '+0.4x' },
+      { period: 'Q1 2026', value: '3.2x', change: '-' },
+      { period: 'Q2 2026', value: '3.6x', change: '+0.4x' },
+      { period: 'Q3 2026', value: '4.1x', change: '+0.5x' },
+      { period: 'Q4 2026 (Proj)', value: '4.5x', change: '+0.4x' },
     ],
   },
   'NDR': {
     description: 'Net Dollar Retention measures revenue expansion from existing customers.',
     target: '120% target',
     history: [
-      { period: 'Q1 2024', value: '108%', change: '-' },
-      { period: 'Q2 2024', value: '110%', change: '+2pp' },
-      { period: 'Q3 2024', value: '114%', change: '+4pp' },
-      { period: 'Q4 2024 (Proj)', value: '118%', change: '+4pp' },
+      { period: 'Q1 2026', value: '108%', change: '-' },
+      { period: 'Q2 2026', value: '110%', change: '+2pp' },
+      { period: 'Q3 2026', value: '114%', change: '+4pp' },
+      { period: 'Q4 2026 (Proj)', value: '118%', change: '+4pp' },
     ],
   },
 };

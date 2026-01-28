@@ -104,7 +104,7 @@ export function ModuleConfigModal({
               <Label htmlFor="subtitle">Subtitle (optional)</Label>
               <Input
                 id="subtitle"
-                placeholder="e.g., 'As of October 2024'"
+                placeholder="e.g., 'As of October 2026'"
                 value={(config.subtitle as string) || ""}
                 onChange={(e) => updateConfig("subtitle", e.target.value)}
               />

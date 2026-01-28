@@ -31,16 +31,16 @@ const activityDetails: Record<string, { description: string; details: string[]; 
       'Approved for cloud infrastructure scaling',
       'Effective immediately',
     ],
-    relatedItems: ['ENG-2024-Q4-001', 'Budget Request #1842'],
+    relatedItems: ['ENG-2026-Q4-001', 'Budget Request #1842'],
   },
   '2': {
     description: 'Generated and exported the Q3 Profit & Loss statement.',
     details: [
-      'Report period: Jul 1 - Sep 30, 2024',
+      'Report period: Jul 1 - Sep 30, 2026',
       'Format: PDF with detailed breakdown',
       'Shared with: Finance Team, Board',
     ],
-    relatedItems: ['RPT-Q3-2024-PL', 'FIN-EXPORT-2024'],
+    relatedItems: ['RPT-Q3-2026-PL', 'FIN-EXPORT-2026'],
   },
   '3': {
     description: 'Completed reconciliation of all Stripe payment transactions.',
@@ -49,7 +49,7 @@ const activityDetails: Record<string, { description: string; details: string[]; 
       'Total volume: $1.2M',
       'Discrepancies resolved: 3',
     ],
-    relatedItems: ['STRIPE-RECON-OCT', 'PAY-2024-10'],
+    relatedItems: ['STRIPE-RECON-OCT', 'PAY-2026-10'],
   },
 };
 

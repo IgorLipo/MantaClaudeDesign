@@ -47,7 +47,7 @@ Consider reallocating unused marketing budget to customer acquisition initiative
 1. Marketing underspent—reallocate to growth
 2. Monitor gross margin toward 80% target`,
 
-  detailed: `## Q3 2024 Comprehensive Financial Analysis
+  detailed: `## Q3 2026 Comprehensive Financial Analysis
 
 ### Liquidity & Cash Position
 The company maintains a healthy cash position of **$4.3M** with a monthly burn rate of approximately $324K. At current spending levels, this provides **18 months of runway**, giving ample time for strategic initiatives.
@@ -75,7 +75,7 @@ Annual Recurring Revenue (ARR) reached **$12.5M**, representing a **12.4% year-o
 };
 
 export const sampleReportData = `
-Q3 2024 Financial Data:
+Q3 2026 Financial Data:
 - Total Cash: $4,285,102
 - Monthly Burn: $324,000
 - ARR: $12,500,000

@@ -41,17 +41,17 @@ const comparisonData: ComparisonMetric[] = [
 ];
 
 const periods = [
-  { value: "q2-2024", label: "Q2 2024" },
-  { value: "q3-2024", label: "Q3 2024" },
-  { value: "q4-2024", label: "Q4 2024" },
-  { value: "jan-2024", label: "January 2024" },
-  { value: "feb-2024", label: "February 2024" },
-  { value: "mar-2024", label: "March 2024" },
+  { value: "q2-2026", label: "Q2 2026" },
+  { value: "q3-2026", label: "Q3 2026" },
+  { value: "q4-2026", label: "Q4 2026" },
+  { value: "jan-2026", label: "January 2026" },
+  { value: "feb-2026", label: "February 2026" },
+  { value: "mar-2026", label: "March 2026" },
 ];
 
 export function ReportComparisonView({ open, onOpenChange }: ReportComparisonViewProps) {
-  const [period1, setPeriod1] = useState("q2-2024");
-  const [period2, setPeriod2] = useState("q3-2024");
+  const [period1, setPeriod1] = useState("q2-2026");
+  const [period2, setPeriod2] = useState("q3-2026");
 
   const period1Label = periods.find((p) => p.value === period1)?.label || period1;
   const period2Label = periods.find((p) => p.value === period2)?.label || period2;

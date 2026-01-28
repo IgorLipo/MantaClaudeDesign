@@ -32,11 +32,11 @@ const presetPeriods = [
   { value: "last-month", label: "Last Month" },
   { value: "last-quarter", label: "Last Quarter" },
   { value: "last-year", label: "Last Year" },
-  { value: "q1-2024", label: "Q1 2024" },
-  { value: "q2-2024", label: "Q2 2024" },
-  { value: "q3-2024", label: "Q3 2024" },
-  { value: "q4-2024", label: "Q4 2024" },
-  { value: "fy-2024", label: "FY 2024" },
+  { value: "q1-2026", label: "Q1 2026" },
+  { value: "q2-2026", label: "Q2 2026" },
+  { value: "q3-2026", label: "Q3 2026" },
+  { value: "q4-2026", label: "Q4 2026" },
+  { value: "fy-2026", label: "FY 2026" },
   { value: "custom", label: "Custom Range" },
 ];
 

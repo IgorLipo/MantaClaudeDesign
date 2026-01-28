@@ -19,7 +19,7 @@ export function useReportBuilder() {
   const [report, setReport] = useState<ReportState>({
     id: generateId(),
     title: "Untitled Report",
-    period: "q3-2024",
+    period: "q3-2026",
     modules: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -57,7 +57,7 @@ export function useReportBuilder() {
         setReport({
           id: generateId(),
           title: template.name,
-          period: "q3-2024",
+          period: "q3-2026",
           modules: template.moduleIds.map((moduleId: string) => {
             const module = getModuleById(moduleId);
             return {
@@ -237,7 +237,7 @@ export function useReportBuilder() {
     setReport({
       id: generateId(),
       title: "Untitled Report",
-      period: "q3-2024",
+      period: "q3-2026",
       modules: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

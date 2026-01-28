@@ -21,7 +21,7 @@ Format as:
 Keep the entire response under 150 words.`;
     case "detailed":
       return `Provide a comprehensive analysis with sections:
-## Q3 2024 Comprehensive Financial Analysis
+## Q3 2026 Comprehensive Financial Analysis
 ### Liquidity & Cash Position
 ### Revenue Performance
 ### Profitability Metrics
