@@ -1,7 +1,7 @@
 # Finance Pulse - Sources of Truth
 
 ## Last Updated
-January 2026 - Phase 3 Complete
+January 2026 - Phase 4 Complete
 
 ---
 
@@ -15,9 +15,10 @@ January 2026 - Phase 3 Complete
 | `/reports/templates` | `ReportTemplates.tsx` | ✅ Complete |
 | `/reports/:id` | `ReportBuilder.tsx` | ✅ Complete |
 | `/productivity` | `Productivity.tsx` | ✅ Complete |
-| `/notifications` | `Notifications.tsx` | ✅ Placeholder |
-| `/settings` | `Settings.tsx` | ✅ Placeholder |
-| `/settings/:tab` | `Settings.tsx` | ✅ Placeholder |
+| `/notifications` | `Notifications.tsx` | ✅ Complete |
+| `/settings` | `Settings.tsx` | ✅ Complete (redirects to /settings/profile) |
+| `/settings/profile` | `Settings.tsx` | ✅ Complete |
+| `/settings/exports` | `Settings.tsx` | ✅ Complete |
 | `/ai` | `AIPage.tsx` | ✅ Placeholder |
 | `*` | `NotFound.tsx` | ✅ Complete |
 
@@ -70,7 +71,7 @@ Defined in: `src/components/layout/AppShell.tsx`
 |------|---------|--------|
 | `useReportBuilder` | Report builder state management | ✅ Complete |
 | `useTasks` | Task management state | ✅ Complete |
-| `useNotifications` | Notification state | Phase 4 |
+| `useNotifications` | Notification state management | ✅ Complete |
 
 ---
 

@@ -4,7 +4,6 @@ import {
   LayoutDashboard, 
   FileText, 
   ListTodo, 
-  Bell, 
   Settings, 
   Sparkles,
   Wallet,
@@ -14,12 +13,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { useNotifications } from "@/hooks/useNotifications";
 
 const navItems = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
   { path: "/reports", label: "Reports", icon: FileText },
   { path: "/productivity", label: "Productivity", icon: ListTodo },
-  { path: "/notifications", label: "Notifications", icon: Bell },
   { path: "/settings", label: "Settings", icon: Settings },
   { path: "/ai", label: "AI Summarizer", icon: Sparkles },
 ];
@@ -32,6 +32,15 @@ export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  
+  const {
+    notifications,
+    unreadCount,
+    isDropdownOpen,
+    setIsDropdownOpen,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications();
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -43,17 +52,29 @@ export function AppShell({ children }: AppShellProps) {
         )}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 px-4 h-16 border-b border-primary-foreground/10">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-foreground/10">
-            <Wallet className="h-5 w-5" />
+        <div className="flex items-center justify-between gap-3 px-4 h-16 border-b border-primary-foreground/10">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-foreground/10">
+              <Wallet className="h-5 w-5" />
+            </div>
+            {sidebarOpen && (
+              <div className="animate-fade-in">
+                <h1 className="text-sm font-medium">
+                  Finance<span className="text-primary-foreground/60">Pulse</span>
+                </h1>
+                <p className="text-[10px] text-primary-foreground/50">Demo Mode</p>
+              </div>
+            )}
           </div>
           {sidebarOpen && (
-            <div className="animate-fade-in">
-              <h1 className="text-sm font-medium">
-                Finance<span className="text-primary-foreground/60">Pulse</span>
-              </h1>
-              <p className="text-[10px] text-primary-foreground/50">Demo Mode</p>
-            </div>
+            <NotificationBell
+              unreadCount={unreadCount}
+              notifications={notifications}
+              isOpen={isDropdownOpen}
+              onOpenChange={setIsDropdownOpen}
+              onMarkAllRead={markAllAsRead}
+              onNotificationClick={markAsRead}
+            />
           )}
         </div>
 
@@ -108,14 +129,24 @@ export function AppShell({ children }: AppShellProps) {
           </div>
           <span className="text-sm font-medium">FinancePulse</span>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="text-primary-foreground hover:bg-primary-foreground/10"
-        >
-          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
+        <div className="flex items-center gap-2">
+          <NotificationBell
+            unreadCount={unreadCount}
+            notifications={notifications}
+            isOpen={isDropdownOpen}
+            onOpenChange={setIsDropdownOpen}
+            onMarkAllRead={markAllAsRead}
+            onNotificationClick={markAsRead}
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="text-primary-foreground hover:bg-primary-foreground/10"
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+        </div>
       </div>
 
       {/* Mobile Menu Overlay */}

@@ -1,5 +1,31 @@
 # Finance Pulse - Changelog
 
+## [Phase 4] - January 2026
+
+### Added
+- **Notification System**
+  - `NotificationBell.tsx` - Bell icon with unread badge and dropdown
+  - `Notifications.tsx` - Full notifications page with filtering
+  - `useNotifications.ts` - Notification state management hook
+  - `mockNotifications.ts` - 8 demo notifications with types/priorities
+
+- **Settings Pages**
+  - `SettingsLayout.tsx` - Settings navigation sidebar
+  - `ProfileForm.tsx` - User profile editing form
+  - `ExportPreferencesForm.tsx` - Export format preferences
+  - `mockSettings.ts` - Demo profile and export preferences
+
+- **Updated AppShell** - Added notification bell to header
+
+### Technical Notes
+- Bell shows unread count badge (9+ for >9)
+- Notification dropdown shows 5 most recent
+- Filter buttons: All, Alerts, Updates
+- Profile form: name, department, timezone
+- Export form: format (PDF/CSV/Excel), page size, orientation
+
+---
+
 ## [Phase 3] - January 2026
 
 ### Added
