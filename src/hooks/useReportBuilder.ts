@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { CanvasModule, getModuleById } from "@/data/mockReports";
+import { useState, useCallback, useEffect } from "react";
+import { CanvasModule, getModuleById, demoTemplates } from "@/data/mockReports";
 
 export interface ReportState {
   title: string;
@@ -13,6 +13,31 @@ export function useReportBuilder() {
     period: "q3-2024",
     modules: [],
   });
+
+  // Check for template selection from sessionStorage on mount
+  useEffect(() => {
+    const templateData = sessionStorage.getItem("selectedTemplate");
+    if (templateData) {
+      try {
+        const template = JSON.parse(templateData);
+        setReport({
+          title: template.name,
+          period: "q3-2024",
+          modules: template.moduleIds.map((moduleId: string) => {
+            const module = getModuleById(moduleId);
+            return {
+              id: `${moduleId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              moduleId,
+              config: module?.defaultConfig || {},
+            };
+          }),
+        });
+        sessionStorage.removeItem("selectedTemplate");
+      } catch (e) {
+        console.error("Failed to load template:", e);
+      }
+    }
+  }, []);
 
   const [selectedModule, setSelectedModule] = useState<CanvasModule | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
