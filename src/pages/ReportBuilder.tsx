@@ -18,6 +18,7 @@ export default function ReportBuilder() {
     isPreviewOpen,
     isConfigOpen,
     addModule,
+    duplicateModule,
     removeModule,
     reorderModules,
     updateModuleConfig,
@@ -101,6 +102,7 @@ export default function ReportBuilder() {
               modules={report.modules}
               onConfigure={openConfig}
               onRemove={removeModule}
+              onDuplicate={duplicateModule}
             />
           </div>
         </div>
