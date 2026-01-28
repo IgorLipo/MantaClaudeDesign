@@ -9,18 +9,32 @@ import { GripVertical, Settings, Trash2, FileText, ChevronDown, ChevronUp, Copy 
 import { cn } from "@/lib/utils";
 import { CanvasModule, getModuleById, iconMap } from "@/data/mockReports";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { ModulePreview } from "./ModulePreview";
+import { ModuleAnnotation, Annotation } from "./ModuleAnnotation";
 
 interface SortableModuleCardProps {
   canvasModule: CanvasModule;
   onConfigure: () => void;
   onRemove: () => void;
   onDuplicate: () => void;
+  annotations: Annotation[];
+  onAddAnnotation: (text: string) => void;
+  onRemoveAnnotation: (id: string) => void;
+  onResolveAnnotation: (id: string) => void;
 }
 
-function SortableModuleCard({ canvasModule, onConfigure, onRemove, onDuplicate }: SortableModuleCardProps) {
+function SortableModuleCard({ 
+  canvasModule, 
+  onConfigure, 
+  onRemove, 
+  onDuplicate,
+  annotations,
+  onAddAnnotation,
+  onRemoveAnnotation,
+  onResolveAnnotation,
+}: SortableModuleCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const module = getModuleById(canvasModule.moduleId);
   const {
@@ -70,6 +84,12 @@ function SortableModuleCard({ canvasModule, onConfigure, onRemove, onDuplicate }
         </div>
 
         <div className="flex items-center gap-1">
+          <ModuleAnnotation
+            annotations={annotations}
+            onAddAnnotation={onAddAnnotation}
+            onRemoveAnnotation={onRemoveAnnotation}
+            onResolveAnnotation={onResolveAnnotation}
+          />
           <Button
             variant="ghost"
             size="icon"
@@ -126,10 +146,16 @@ interface ReportCanvasProps {
   onDuplicate?: (canvasModule: CanvasModule) => void;
 }
 
+// Local state for annotations (in a real app, this would be in a hook or context)
+const generateAnnotationId = () => `annotation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
 export function ReportCanvas({ modules, onConfigure, onRemove, onDuplicate }: ReportCanvasProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: "canvas-droppable",
   });
+
+  // Store annotations per module
+  const [moduleAnnotations, setModuleAnnotations] = useState<Record<string, Annotation[]>>({});
 
   const handleDuplicate = (canvasModule: CanvasModule) => {
     if (onDuplicate) {
@@ -138,6 +164,37 @@ export function ReportCanvas({ modules, onConfigure, onRemove, onDuplicate }: Re
       toast.info("Module duplicated");
     }
   };
+
+  const handleAddAnnotation = useCallback((moduleId: string, text: string) => {
+    const newAnnotation: Annotation = {
+      id: generateAnnotationId(),
+      text,
+      author: "You",
+      createdAt: new Date().toISOString(),
+    };
+    setModuleAnnotations((prev) => ({
+      ...prev,
+      [moduleId]: [...(prev[moduleId] || []), newAnnotation],
+    }));
+    toast.success("Note added");
+  }, []);
+
+  const handleRemoveAnnotation = useCallback((moduleId: string, annotationId: string) => {
+    setModuleAnnotations((prev) => ({
+      ...prev,
+      [moduleId]: (prev[moduleId] || []).filter((a) => a.id !== annotationId),
+    }));
+  }, []);
+
+  const handleResolveAnnotation = useCallback((moduleId: string, annotationId: string) => {
+    setModuleAnnotations((prev) => ({
+      ...prev,
+      [moduleId]: (prev[moduleId] || []).map((a) =>
+        a.id === annotationId ? { ...a, resolved: true } : a
+      ),
+    }));
+    toast.success("Note resolved");
+  }, []);
 
   return (
     <div
@@ -179,6 +236,10 @@ export function ReportCanvas({ modules, onConfigure, onRemove, onDuplicate }: Re
                 onConfigure={() => onConfigure(canvasModule)}
                 onRemove={() => onRemove(canvasModule.id)}
                 onDuplicate={() => handleDuplicate(canvasModule)}
+                annotations={moduleAnnotations[canvasModule.id] || []}
+                onAddAnnotation={(text) => handleAddAnnotation(canvasModule.id, text)}
+                onRemoveAnnotation={(id) => handleRemoveAnnotation(canvasModule.id, id)}
+                onResolveAnnotation={(id) => handleResolveAnnotation(canvasModule.id, id)}
               />
             ))}
           </div>

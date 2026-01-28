@@ -21,6 +21,8 @@ import { ComboChart } from "./charts/ComboChart";
 import { ForecastChart } from "./charts/ForecastChart";
 import { GaugeChart } from "./charts/GaugeChart";
 import { SparklineGrid } from "./charts/SparklineGrid";
+import { HeatMapChart } from "./charts/HeatMapChart";
+import { VarianceTable } from "./charts/VarianceTable";
 
 interface ModulePreviewProps {
   module: ReportModule;
@@ -67,6 +69,16 @@ export function ModulePreview({ module, config, compact = false }: ModulePreview
   // Gauge charts for compliance/risk indicators
   if (module.id === "policy_compliance" || module.id === "risk_indicators") {
     return <GaugeChart module={module} config={config} compact={compact} />;
+  }
+
+  // Heat map for cross-dimensional analysis
+  if (chartType === "heatmap" || module.id === "department_spend_trend") {
+    return <HeatMapChart config={config} compact={compact} />;
+  }
+
+  // Variance analysis table
+  if (module.id === "budget_vs_actual" && (config.showVariance as boolean) !== false) {
+    return <VarianceTable config={config} compact={compact} />;
   }
 
 

@@ -5,7 +5,8 @@ import {
   BarChart3, PieChart, TrendingUp, TrendingDown, Table, DollarSign, Users, FileText, 
   Calendar, Target, Wallet, CreditCard, Building, Activity, LineChart, AreaChart,
   ArrowUpRight, ArrowDownRight, Percent, Hash, Clock, AlertCircle, CheckCircle,
-  Globe, Briefcase, Calculator, Receipt, Landmark, Scale, ShieldCheck, Zap
+  Globe, Briefcase, Calculator, Receipt, Landmark, Scale, ShieldCheck, Zap,
+  LayoutGrid, Layers, ArrowLeftRight
 } from "lucide-react";
 
 export type ModuleType = "chart" | "table" | "metric" | "text" | "kpi" | "comparison";
@@ -481,6 +482,78 @@ export const availableModules: ReportModule[] = [
     description: "Visual section divider with title",
     defaultConfig: { style: "divider", showLine: true },
   },
+
+  // Advanced Visualization Modules
+  {
+    id: "treemap_expenses",
+    type: "chart",
+    name: "Expense Treemap",
+    icon: "LayoutGrid",
+    category: "financial",
+    description: "Hierarchical view of expenses by category and subcategory",
+    defaultConfig: { chartType: "treemap", colorBy: "category", showLabels: true },
+    previewData: [
+      { name: "Payroll", value: 4200000, category: "OpEx", children: [
+        { name: "Engineering", value: 2100000 },
+        { name: "Sales", value: 1200000 },
+        { name: "Marketing", value: 500000 },
+        { name: "Other", value: 400000 },
+      ]},
+      { name: "Infrastructure", value: 850000, category: "OpEx" },
+      { name: "Marketing", value: 520000, category: "OpEx" },
+    ],
+  },
+  {
+    id: "contribution_margin",
+    type: "chart",
+    name: "Contribution Margin Analysis",
+    icon: "Layers",
+    category: "financial",
+    description: "Revenue, costs, and margin by product line",
+    defaultConfig: { chartType: "stacked", showMarginLine: true },
+  },
+  {
+    id: "customer_cohort",
+    type: "chart",
+    name: "Customer Cohort Analysis",
+    icon: "Users",
+    category: "operational",
+    description: "Retention and revenue by customer cohort",
+    defaultConfig: { chartType: "heatmap", cohortMonths: 12 },
+  },
+  {
+    id: "unit_economics",
+    type: "kpi",
+    name: "Unit Economics",
+    icon: "Calculator",
+    category: "financial",
+    description: "CAC, LTV, payback period, and efficiency metrics",
+    defaultConfig: { layout: "cards", showTrends: true },
+    previewData: [
+      { label: "CAC", value: "$1,240", trend: "down", change: "-8%" },
+      { label: "LTV", value: "$5,100", trend: "up", change: "+12%" },
+      { label: "LTV:CAC", value: "4.1x", trend: "up", change: "+0.5x" },
+      { label: "Payback", value: "8.2 mo", trend: "down", change: "-1.1mo" },
+    ],
+  },
+  {
+    id: "working_capital",
+    type: "metric",
+    name: "Working Capital Analysis",
+    icon: "Wallet",
+    category: "operational",
+    description: "Current assets, liabilities, and working capital ratios",
+    defaultConfig: { showRatios: true },
+  },
+  {
+    id: "quarterly_comparison",
+    type: "comparison",
+    name: "Quarterly Comparison",
+    icon: "ArrowLeftRight",
+    category: "executive",
+    description: "Side-by-side comparison of key metrics across quarters",
+    defaultConfig: { quarters: 4, highlightChanges: true },
+  },
 ];
 
 export const demoTemplates: ReportTemplate[] = [
@@ -593,4 +666,7 @@ export const iconMap: Record<string, React.ComponentType<{ className?: string }>
   Scale,
   ShieldCheck,
   Zap,
+  LayoutGrid,
+  Layers,
+  ArrowLeftRight,
 };

@@ -1,7 +1,7 @@
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, pointerWithin } from "@dnd-kit/core";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, LayoutTemplate, Keyboard } from "lucide-react";
+import { ArrowLeft, LayoutTemplate, Keyboard, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModuleSidebar } from "@/components/reports/ModuleSidebar";
 import { ReportCanvas } from "@/components/reports/ReportCanvas";
@@ -9,6 +9,7 @@ import { ReportToolbar } from "@/components/reports/ReportToolbar";
 import { ModuleConfigModal } from "@/components/reports/ModuleConfigModal";
 import { ReportPreviewModal } from "@/components/reports/ReportPreviewModal";
 import { MobileModuleDrawer } from "@/components/reports/MobileModuleDrawer";
+import { ReportComparisonView } from "@/components/reports/ReportComparisonView";
 import { useReportBuilder } from "@/hooks/useReportBuilder";
 import { useKeyboardShortcuts, getShortcutLabel } from "@/hooks/useKeyboardShortcuts";
 import { getModuleById, iconMap } from "@/data/mockReports";
@@ -42,6 +43,7 @@ export default function ReportBuilder() {
   } = useReportBuilder();
 
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [isComparisonOpen, setIsComparisonOpen] = useState(false);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -105,6 +107,14 @@ export default function ReportBuilder() {
               </div>
             </TooltipContent>
           </Tooltip>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setIsComparisonOpen(true)}
+          >
+            <ArrowLeftRight className="h-4 w-4 mr-2" />
+            Compare
+          </Button>
           <Link to="/reports/templates">
             <Button variant="outline" size="sm">
               <LayoutTemplate className="h-4 w-4 mr-2" />
@@ -179,6 +189,11 @@ export default function ReportBuilder() {
           title={report.title}
           period={report.period}
           modules={report.modules}
+        />
+
+        <ReportComparisonView
+          open={isComparisonOpen}
+          onOpenChange={setIsComparisonOpen}
         />
       </div>
     </TooltipProvider>
