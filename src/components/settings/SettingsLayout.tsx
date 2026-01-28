@@ -1,4 +1,4 @@
-import { User, FileOutput, Bell, ChevronDown } from "lucide-react";
+import { User, FileOutput, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavLink, useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -72,16 +72,6 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
                     </button>
                   );
                 })}
-                <button
-                  onClick={() => {
-                    navigate("/notifications");
-                    setMobileNavOpen(false);
-                  }}
-                  className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-                >
-                  <Bell className="h-4 w-4" />
-                  Notifications
-                </button>
               </CollapsibleContent>
             </Collapsible>
           </div>
@@ -107,13 +97,6 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
                   </NavLink>
                 );
               })}
-              <NavLink
-                to="/notifications"
-                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                <Bell className="h-4 w-4" />
-                Notifications
-              </NavLink>
             </div>
           </nav>
 
