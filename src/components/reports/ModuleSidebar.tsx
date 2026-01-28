@@ -1,22 +1,18 @@
 import { useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, ChevronRight, GripVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, GripVertical, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
   availableModules, 
-  getModulesByCategory, 
+  getModulesByCategory,
+  getAllCategories,
   iconMap, 
   ModuleCategory,
   ReportModule 
 } from "@/data/mockReports";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-
-const categories: { id: ModuleCategory; label: string }[] = [
-  { id: "financial", label: "Financial Metrics" },
-  { id: "departmental", label: "Departmental" },
-  { id: "visualizations", label: "Visualizations" },
-];
+import { Input } from "@/components/ui/input";
 
 interface DraggableModuleProps {
   module: ReportModule;
@@ -57,7 +53,9 @@ function DraggableModule({ module }: DraggableModuleProps) {
 }
 
 export function ModuleSidebar() {
-  const [openCategories, setOpenCategories] = useState<ModuleCategory[]>(["financial"]);
+  const categories = getAllCategories();
+  const [openCategories, setOpenCategories] = useState<ModuleCategory[]>(["executive", "financial"]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const toggleCategory = (category: ModuleCategory) => {
     setOpenCategories((prev) =>
@@ -67,40 +65,88 @@ export function ModuleSidebar() {
     );
   };
 
+  const filteredModules = searchQuery.trim()
+    ? availableModules.filter(
+        (m) =>
+          m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          m.description.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : null;
+
   return (
-    <aside className="w-72 flex-shrink-0 border-r border-border bg-muted/30 overflow-y-auto">
+    <aside className="w-80 flex-shrink-0 border-r border-border bg-muted/30 overflow-y-auto flex flex-col">
       <div className="p-4 border-b border-border">
-        <h2 className="text-sm font-semibold text-foreground">Data Modules</h2>
-        <p className="text-xs text-muted-foreground">Drag to add to report</p>
+        <h2 className="text-sm font-semibold text-foreground mb-1">Module Library</h2>
+        <p className="text-xs text-muted-foreground mb-3">Drag modules to build your report</p>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search modules..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-9"
+          />
+        </div>
       </div>
 
-      <div className="p-2 space-y-2">
-        {categories.map((category) => {
-          const isOpen = openCategories.includes(category.id);
-          const modules = getModulesByCategory(category.id);
+      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+        {filteredModules ? (
+          // Search results
+          <div className="space-y-2 px-1">
+            <p className="text-xs text-muted-foreground px-2 py-1">
+              {filteredModules.length} result{filteredModules.length !== 1 ? "s" : ""}
+            </p>
+            {filteredModules.map((module) => (
+              <DraggableModule key={module.id} module={module} />
+            ))}
+            {filteredModules.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No modules match your search.
+              </p>
+            )}
+          </div>
+        ) : (
+          // Categorized view
+          categories.map((category) => {
+            const isOpen = openCategories.includes(category.id);
+            const modules = getModulesByCategory(category.id);
+            const CategoryIcon = iconMap[category.icon];
 
-          return (
-            <Collapsible
-              key={category.id}
-              open={isOpen}
-              onOpenChange={() => toggleCategory(category.id)}
-            >
-              <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-foreground rounded-lg hover:bg-muted transition-colors">
-                <span>{category.label}</span>
-                {isOpen ? (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                )}
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-2 mt-2 px-1">
-                {modules.map((module) => (
-                  <DraggableModule key={module.id} module={module} />
-                ))}
-              </CollapsibleContent>
-            </Collapsible>
-          );
-        })}
+            return (
+              <Collapsible
+                key={category.id}
+                open={isOpen}
+                onOpenChange={() => toggleCategory(category.id)}
+              >
+                <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-sm font-medium text-foreground rounded-lg hover:bg-muted transition-colors">
+                  <div className="flex items-center gap-2">
+                    {CategoryIcon && <CategoryIcon className="h-4 w-4 text-muted-foreground" />}
+                    <span>{category.label}</span>
+                    <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                      {modules.length}
+                    </span>
+                  </div>
+                  {isOpen ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-2 mt-2 px-1">
+                  {modules.map((module) => (
+                    <DraggableModule key={module.id} module={module} />
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })
+        )}
+      </div>
+
+      <div className="p-3 border-t border-border bg-muted/50">
+        <p className="text-xs text-muted-foreground text-center">
+          {availableModules.length} modules available
+        </p>
       </div>
     </aside>
   );

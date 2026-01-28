@@ -25,13 +25,28 @@ export function useReportBuilder() {
     const newCanvasModule: CanvasModule = {
       id: `${moduleId}-${Date.now()}`,
       moduleId,
-      config: {},
+      config: { ...module.defaultConfig },
     };
 
     setReport((prev) => ({
       ...prev,
       modules: [...prev.modules, newCanvasModule],
     }));
+  }, []);
+
+  const duplicateModule = useCallback((canvasModule: CanvasModule) => {
+    const newCanvasModule: CanvasModule = {
+      id: `${canvasModule.moduleId}-${Date.now()}`,
+      moduleId: canvasModule.moduleId,
+      config: { ...canvasModule.config },
+    };
+
+    setReport((prev) => {
+      const index = prev.modules.findIndex((m) => m.id === canvasModule.id);
+      const newModules = [...prev.modules];
+      newModules.splice(index + 1, 0, newCanvasModule);
+      return { ...prev, modules: newModules };
+    });
   }, []);
 
   const removeModule = useCallback((canvasId: string) => {
@@ -102,6 +117,7 @@ export function useReportBuilder() {
     isPreviewOpen,
     isConfigOpen,
     addModule,
+    duplicateModule,
     removeModule,
     reorderModules,
     updateModuleConfig,
