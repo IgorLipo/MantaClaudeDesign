@@ -1,5 +1,12 @@
 import { Settings } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const data = [
   { name: 'Payroll', value: 65, color: 'hsl(239, 84%, 67%)' },
@@ -17,9 +24,24 @@ export function SpendMixChart() {
           <h2 className="text-lg font-medium tracking-tight text-foreground">Spend Mix</h2>
           <p className="text-xs text-muted-foreground">By category</p>
         </div>
-        <button className="text-muted-foreground hover:text-foreground transition">
-          <Settings className="h-5 w-5" />
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="text-muted-foreground hover:text-foreground transition">
+              <Settings className="h-5 w-5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onClick={() => toast.info("Configure Categories", { description: "Category settings would open here." })}>
+              Edit Categories
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toast.info("View Breakdown", { description: "Detailed spend breakdown would display." })}>
+              Full Breakdown
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toast.info("Export", { description: "Spend mix data exported." })}>
+              Export Data
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="flex flex-col items-center justify-center">

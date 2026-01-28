@@ -1,5 +1,6 @@
 import { LucideIcon, TrendingUp, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface KPICardProps {
   title: string;
@@ -14,8 +15,17 @@ interface KPICardProps {
 }
 
 export function KPICard({ title, value, icon: Icon, trend, progress }: KPICardProps) {
+  const handleClick = () => {
+    toast.info(`${title} Details`, {
+      description: `Current value: ${value}. Click to view historical data and trends.`,
+    });
+  };
+
   return (
-    <div className="card-elevated hover-lift rounded-3xl bg-card p-5 transition-all">
+    <div 
+      className="card-elevated hover-lift rounded-3xl bg-card p-5 transition-all cursor-pointer"
+      onClick={handleClick}
+    >
       <div className="flex items-center justify-between text-muted-foreground">
         <p className="text-xs font-medium">{title}</p>
         <Icon className="h-[18px] w-[18px] text-accent" />

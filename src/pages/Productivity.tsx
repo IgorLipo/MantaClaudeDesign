@@ -49,7 +49,17 @@ export default function Productivity() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Select defaultValue={demoCycle.id}>
+            <Select 
+              defaultValue={demoCycle.id}
+              onValueChange={(value) => {
+                const selected = cycleOptions.find(c => c.value === value);
+                if (selected) {
+                  toast.info(`Switched to ${selected.label}`, {
+                    description: "Cycle data would update in production.",
+                  });
+                }
+              }}
+            >
               <SelectTrigger className="w-48">
                 <SelectValue />
               </SelectTrigger>

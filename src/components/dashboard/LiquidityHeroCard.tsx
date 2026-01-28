@@ -1,4 +1,5 @@
 import { Shield, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
 
 interface LiquidityHeroCardProps {
   totalLiquidity: string;
@@ -11,6 +12,12 @@ export function LiquidityHeroCard({
   monthlyBurn = "$324,000",
   runwayMonths = 18 
 }: LiquidityHeroCardProps) {
+  const handleViewDetails = () => {
+    toast.info("Liquidity Details", {
+      description: "Full cash flow breakdown would open in a detailed view.",
+    });
+  };
+
   return (
     <article className="glass-dark glow-accent relative h-80 overflow-hidden rounded-3xl shadow-dark">
       {/* Decorative blur */}
@@ -39,7 +46,10 @@ export function LiquidityHeroCard({
             <p className="text-xs text-primary-foreground/60">Monthly Burn</p>
             <p className="text-sm font-medium">{monthlyBurn}</p>
           </div>
-          <button className="group inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary-foreground text-primary transition-all hover:bg-accent hover:text-accent-foreground hover:scale-105 active:scale-95">
+          <button 
+            onClick={handleViewDetails}
+            className="group inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary-foreground text-primary transition-all hover:bg-accent hover:text-accent-foreground hover:scale-105 active:scale-95"
+          >
             <ArrowRight className="h-5 w-5" />
           </button>
         </div>
