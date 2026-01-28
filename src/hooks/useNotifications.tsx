@@ -1,7 +1,23 @@
-import { useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { Notification, demoNotifications } from "@/data/mockNotifications";
 
-export function useNotifications() {
+interface NotificationsContextType {
+  notifications: Notification[];
+  unreadCount: number;
+  isDropdownOpen: boolean;
+  setIsDropdownOpen: (open: boolean) => void;
+  markAsRead: (id: string) => void;
+  markAllAsRead: () => void;
+  getFilteredNotifications: (filter: string) => Notification[];
+}
+
+const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
+
+interface NotificationsProviderProps {
+  children: ReactNode;
+}
+
+export function NotificationsProvider({ children }: NotificationsProviderProps) {
   const [notifications, setNotifications] = useState<Notification[]>(demoNotifications);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -35,7 +51,7 @@ export function useNotifications() {
     [notifications]
   );
 
-  return {
+  const value: NotificationsContextType = {
     notifications,
     unreadCount,
     isDropdownOpen,
@@ -44,4 +60,18 @@ export function useNotifications() {
     markAllAsRead,
     getFilteredNotifications,
   };
+
+  return (
+    <NotificationsContext.Provider value={value}>
+      {children}
+    </NotificationsContext.Provider>
+  );
+}
+
+export function useNotifications(): NotificationsContextType {
+  const context = useContext(NotificationsContext);
+  if (context === undefined) {
+    throw new Error("useNotifications must be used within a NotificationsProvider");
+  }
+  return context;
 }
