@@ -66,11 +66,11 @@ function SortableModuleCard({
       )}
     >
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-border bg-muted/30">
+      <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 border-b border-border bg-muted/30">
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab touch-none text-muted-foreground hover:text-foreground"
+          className="cursor-grab touch-none text-muted-foreground hover:text-foreground flex-shrink-0"
         >
           <GripVertical className="h-5 w-5" />
         </button>
@@ -78,12 +78,12 @@ function SortableModuleCard({
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {IconComponent && <IconComponent className="h-4 w-4 text-accent flex-shrink-0" />}
           <h3 className="text-sm font-medium text-foreground truncate">{displayTitle}</h3>
-          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full flex-shrink-0">
+          <span className="text-xs text-muted-foreground bg-muted px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0 hidden sm:inline">
             {module.type}
           </span>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
           <ModuleAnnotation
             annotations={annotations}
             onAddAnnotation={onAddAnnotation}
@@ -93,7 +93,7 @@ function SortableModuleCard({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="h-7 w-7 sm:h-8 sm:w-8 hidden sm:flex opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={onDuplicate}
           >
             <Copy className="h-4 w-4" />
@@ -101,7 +101,7 @@ function SortableModuleCard({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7 sm:h-8 sm:w-8"
             onClick={onConfigure}
           >
             <Settings className="h-4 w-4" />
@@ -109,7 +109,7 @@ function SortableModuleCard({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-destructive hover:text-destructive"
+            className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:text-destructive"
             onClick={onRemove}
           >
             <Trash2 className="h-4 w-4" />
@@ -117,7 +117,7 @@ function SortableModuleCard({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7 sm:h-8 sm:w-8"
             onClick={() => setIsExpanded(!isExpanded)}
           >
             {isExpanded ? (
@@ -131,7 +131,7 @@ function SortableModuleCard({
 
       {/* Preview Content */}
       {isExpanded && (
-        <div className="p-4">
+        <div className="p-3 sm:p-4 overflow-hidden">
           <ModulePreview module={module} config={canvasModule.config} />
         </div>
       )}
