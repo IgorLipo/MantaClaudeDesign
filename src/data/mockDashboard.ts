@@ -172,4 +172,4 @@ export const teamActivities = [
   },
 ];
 
-export const currentPeriod = "Q3 FY2024 Reporting";
+export const currentPeriod = "Q3 FY2026 Reporting";

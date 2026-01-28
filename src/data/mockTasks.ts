@@ -23,10 +23,10 @@ export interface ReportingCycle {
 }
 
 export const demoCycle: ReportingCycle = {
-  id: "oct-2024",
-  name: "October 2024 Close",
-  startDate: "2024-10-01",
-  endDate: "2024-10-31",
+  id: "oct-2026",
+  name: "October 2026 Close",
+  startDate: "2026-10-01",
+  endDate: "2026-10-31",
 };
 
 export const demoUsers = [
@@ -43,7 +43,7 @@ export const demoTasks: Task[] = [
     description: "Match all bank transactions with ledger entries for October",
     assignee: "Sarah Chen",
     assigneeInitials: "SC",
-    dueDate: "2024-10-05",
+    dueDate: "2026-10-05",
     status: "complete",
     phase: "preparation",
     priority: "high",
@@ -54,7 +54,7 @@ export const demoTasks: Task[] = [
     description: "Analyze outstanding payables and flag overdue items",
     assignee: "Mike Johnson",
     assigneeInitials: "MJ",
-    dueDate: "2024-10-10",
+    dueDate: "2026-10-10",
     status: "in_progress",
     phase: "execution",
     priority: "high",
@@ -65,7 +65,7 @@ export const demoTasks: Task[] = [
     description: "Create journal entries for accrued expenses and revenue",
     assignee: "Emma Davis",
     assigneeInitials: "ED",
-    dueDate: "2024-10-15",
+    dueDate: "2026-10-15",
     status: "not_started",
     phase: "execution",
     priority: "medium",
@@ -76,7 +76,7 @@ export const demoTasks: Task[] = [
     description: "Ensure all revenue is properly recognized per ASC 606",
     assignee: "Sarah Chen",
     assigneeInitials: "SC",
-    dueDate: "2024-10-12",
+    dueDate: "2026-10-12",
     status: "in_review",
     phase: "execution",
     priority: "high",
@@ -87,7 +87,7 @@ export const demoTasks: Task[] = [
     description: "Match intercompany transactions and resolve discrepancies",
     assignee: "James Wilson",
     assigneeInitials: "JW",
-    dueDate: "2024-10-08",
+    dueDate: "2026-10-08",
     status: "complete",
     phase: "preparation",
     priority: "medium",
@@ -98,7 +98,7 @@ export const demoTasks: Task[] = [
     description: "Verify depreciation schedules and asset additions",
     assignee: "Mike Johnson",
     assigneeInitials: "MJ",
-    dueDate: "2024-10-18",
+    dueDate: "2026-10-18",
     status: "not_started",
     phase: "execution",
     priority: "low",
@@ -109,7 +109,7 @@ export const demoTasks: Task[] = [
     description: "Analyze budget vs actual variances for all departments",
     assignee: "Emma Davis",
     assigneeInitials: "ED",
-    dueDate: "2024-10-20",
+    dueDate: "2026-10-20",
     status: "not_started",
     phase: "review",
     priority: "medium",
@@ -120,7 +120,7 @@ export const demoTasks: Task[] = [
     description: "Prepare P&L, balance sheet, and cash flow statement",
     assignee: "Sarah Chen",
     assigneeInitials: "SC",
-    dueDate: "2024-10-25",
+    dueDate: "2026-10-25",
     status: "not_started",
     phase: "review",
     priority: "high",
@@ -131,7 +131,7 @@ export const demoTasks: Task[] = [
     description: "Present preliminary results to leadership team",
     assignee: "James Wilson",
     assigneeInitials: "JW",
-    dueDate: "2024-10-28",
+    dueDate: "2026-10-28",
     status: "not_started",
     phase: "close",
     priority: "high",
@@ -142,7 +142,7 @@ export const demoTasks: Task[] = [
     description: "Obtain controller approval and lock the period",
     assignee: "Sarah Chen",
     assigneeInitials: "SC",
-    dueDate: "2024-10-31",
+    dueDate: "2026-10-31",
     status: "not_started",
     phase: "close",
     priority: "high",
@@ -150,9 +150,9 @@ export const demoTasks: Task[] = [
 ];
 
 export const cycleOptions = [
-  { value: "oct-2024", label: "October 2024 Close" },
-  { value: "sep-2024", label: "September 2024 Close" },
-  { value: "q3-2024", label: "Q3 2024 Quarter End" },
+  { value: "oct-2026", label: "October 2026 Close" },
+  { value: "sep-2026", label: "September 2026 Close" },
+  { value: "q3-2026", label: "Q3 2026 Quarter End" },
 ];
 
 export const statusLabels: Record<TaskStatus, string> = {

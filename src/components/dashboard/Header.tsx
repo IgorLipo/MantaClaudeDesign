@@ -55,7 +55,7 @@ const invoiceSchema = z.object({
 
 type InvoiceFormValues = z.infer<typeof invoiceSchema>;
 
-export function Header({ period = "Q3 FY2024 Reporting" }: HeaderProps) {
+export function Header({ period = "Q3 FY2026 Reporting" }: HeaderProps) {
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const { addInvoice } = useInvoices();
 
