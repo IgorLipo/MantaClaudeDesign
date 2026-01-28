@@ -1,6 +1,12 @@
-import { User, FileOutput, Bell } from "lucide-react";
+import { User, FileOutput, Bell, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { NavLink, useParams, Navigate } from "react-router-dom";
+import { NavLink, useParams, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 const settingsTabs = [
   { id: "profile", label: "Profile", icon: User },
@@ -13,7 +19,12 @@ interface SettingsLayoutProps {
 
 export function SettingsLayout({ children }: SettingsLayoutProps) {
   const { tab } = useParams();
+  const navigate = useNavigate();
   const currentTab = tab || "profile";
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const currentTabData = settingsTabs.find((t) => t.id === currentTab);
+  const CurrentIcon = currentTabData?.icon || User;
 
   return (
     <div className="min-h-screen bg-background">
@@ -26,9 +37,58 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
 
         {/* Layout */}
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar Navigation */}
-          <nav className="lg:w-56 flex-shrink-0">
-            <div className="flex lg:flex-col gap-2">
+          {/* Mobile Navigation - Collapsible Dropdown */}
+          <div className="lg:hidden">
+            <Collapsible open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+              <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 bg-card border border-border rounded-lg">
+                <div className="flex items-center gap-3">
+                  <CurrentIcon className="h-4 w-4 text-accent" />
+                  <span className="text-sm font-medium">{currentTabData?.label || "Settings"}</span>
+                </div>
+                <ChevronDown className={cn(
+                  "h-4 w-4 text-muted-foreground transition-transform",
+                  mobileNavOpen && "rotate-180"
+                )} />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2 bg-card border border-border rounded-lg overflow-hidden">
+                {settingsTabs.map((item) => {
+                  const isActive = currentTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        navigate(`/settings/${item.id}`);
+                        setMobileNavOpen(false);
+                      }}
+                      className={cn(
+                        "flex items-center gap-3 w-full px-4 py-3 text-sm font-medium transition-all border-b border-border last:border-b-0",
+                        isActive
+                          ? "bg-accent/10 text-accent-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => {
+                    navigate("/notifications");
+                    setMobileNavOpen(false);
+                  }}
+                  className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <Bell className="h-4 w-4" />
+                  Notifications
+                </button>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+
+          {/* Desktop Sidebar Navigation */}
+          <nav className="hidden lg:block lg:w-56 flex-shrink-0">
+            <div className="flex flex-col gap-2">
               {settingsTabs.map((item) => {
                 const isActive = currentTab === item.id;
                 return (

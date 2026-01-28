@@ -46,7 +46,7 @@ export default function Notifications() {
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-3xl px-4 py-8">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">Notifications</h1>
             <p className="text-sm text-muted-foreground">
@@ -56,15 +56,15 @@ export default function Notifications() {
           {unreadCount > 0 && (
             <button
               onClick={markAllAsRead}
-              className="text-sm text-accent hover:underline"
+              className="text-sm text-accent hover:underline self-start sm:self-auto"
             >
               Mark all as read
             </button>
           )}
         </div>
 
-        {/* Filter Buttons */}
-        <div className="flex gap-2 mb-6">
+        {/* Filter Buttons - Wrap on mobile */}
+        <div className="flex flex-wrap gap-2 mb-6">
           {notificationFilters.map((filter) => (
             <button
               key={filter.value}

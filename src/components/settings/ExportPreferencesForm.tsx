@@ -49,7 +49,7 @@ export function ExportPreferencesForm() {
             onValueChange={(value: "pdf" | "csv" | "excel") =>
               setPrefs({ ...prefs, format: value })
             }
-            className="flex gap-4"
+            className="flex flex-col sm:flex-row gap-3 sm:gap-4"
           >
             {exportFormatOptions.map((opt) => (
               <div key={opt.value} className="flex items-center space-x-2">
@@ -97,7 +97,7 @@ export function ExportPreferencesForm() {
                 onValueChange={(value: "portrait" | "landscape") =>
                   setPrefs({ ...prefs, orientation: value })
                 }
-                className="flex gap-4"
+                className="flex flex-col sm:flex-row gap-3 sm:gap-4"
               >
                 {orientationOptions.map((opt) => (
                   <div key={opt.value} className="flex items-center space-x-2">

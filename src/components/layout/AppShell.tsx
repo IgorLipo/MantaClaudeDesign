@@ -155,36 +155,35 @@ export function AppShell({ children }: AppShellProps) {
       )}
 
       {/* Mobile Menu */}
-      <div
-        className={cn(
-          "lg:hidden fixed top-14 left-0 right-0 z-50 bg-primary text-primary-foreground transition-transform duration-300",
-          mobileMenuOpen ? "translate-y-0" : "-translate-y-full"
-        )}
-      >
-        <nav className="py-2 px-2">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path ||
-              (item.path !== "/" && location.pathname.startsWith(item.path));
-            
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                onClick={() => setMobileMenuOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all",
-                  isActive
-                    ? "bg-primary-foreground/15 text-primary-foreground"
-                    : "text-primary-foreground/70 hover:bg-primary-foreground/10"
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                <span>{item.label}</span>
-              </NavLink>
-            );
-          })}
-        </nav>
-      </div>
+      {mobileMenuOpen && (
+        <div
+          className="lg:hidden fixed top-14 left-0 right-0 z-50 bg-primary text-primary-foreground animate-in slide-in-from-top duration-200"
+        >
+          <nav className="py-2 px-2">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path ||
+                (item.path !== "/" && location.pathname.startsWith(item.path));
+              
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all",
+                    isActive
+                      ? "bg-primary-foreground/15 text-primary-foreground"
+                      : "text-primary-foreground/70 hover:bg-primary-foreground/10"
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.label}</span>
+                </NavLink>
+              );
+            })}
+          </nav>
+        </div>
+      )}
 
       {/* Main Content */}
       <main

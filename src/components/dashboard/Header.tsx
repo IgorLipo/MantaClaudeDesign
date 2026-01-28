@@ -125,7 +125,7 @@ export function Header({ period = "Q3 FY2026 Reporting" }: HeaderProps) {
 
   return (
     <>
-      <header className="mb-8 flex items-center justify-between">
+      <header className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
             <Wallet className="h-6 w-6" strokeWidth={1.5} />
@@ -138,12 +138,12 @@ export function Header({ period = "Q3 FY2026 Reporting" }: HeaderProps) {
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleExport}>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+          <Button variant="outline" size="sm" className="gap-2 justify-center" onClick={handleExport}>
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button size="sm" className="gap-2 shadow-md shadow-primary/10" onClick={() => setIsInvoiceModalOpen(true)}>
+          <Button size="sm" className="gap-2 justify-center shadow-md shadow-primary/10" onClick={() => setIsInvoiceModalOpen(true)}>
             <Plus className="h-4 w-4" />
             New Invoice
           </Button>
