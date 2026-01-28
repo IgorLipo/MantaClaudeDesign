@@ -200,19 +200,19 @@ export function ReportCanvas({ modules, onConfigure, onRemove, onDuplicate }: Re
     <div
       ref={setNodeRef}
       className={cn(
-        "flex-1 p-6 overflow-y-auto transition-colors",
+        "flex-1 p-4 sm:p-6 overflow-y-auto transition-colors",
         isOver && "bg-accent/5"
       )}
     >
       {modules.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-full text-center border-2 border-dashed border-border rounded-2xl p-12">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
-            <FileText className="h-8 w-8 text-muted-foreground" />
+        <div className="flex flex-col items-center justify-center h-full text-center border-2 border-dashed border-border rounded-2xl p-6 sm:p-12">
+          <div className="flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-muted mb-4">
+            <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-medium text-foreground mb-2">
+          <h3 className="text-base sm:text-lg font-medium text-foreground mb-2">
             Start Building Your Report
           </h3>
-          <p className="text-sm text-muted-foreground max-w-sm mb-6">
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-xs sm:max-w-sm mb-6">
             Drag modules from the sidebar to add them here. Each module can be configured
             and reordered to create your perfect report.
           </p>

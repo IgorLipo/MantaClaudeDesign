@@ -37,6 +37,7 @@ interface ReportVersionHistoryProps {
   reportId: string;
   currentTitle: string;
   onRestore: (snapshot: ReportState) => void;
+  iconOnly?: boolean;
 }
 
 // Helper to get version history from sessionStorage
@@ -70,7 +71,7 @@ export function saveReportVersion(report: ReportState): void {
   sessionStorage.setItem(key, JSON.stringify(updated));
 }
 
-export function ReportVersionHistory({ reportId, currentTitle, onRestore }: ReportVersionHistoryProps) {
+export function ReportVersionHistory({ reportId, currentTitle, onRestore, iconOnly }: ReportVersionHistoryProps) {
   const [versions, setVersions] = useState<ReportVersion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [restoreVersion, setRestoreVersion] = useState<ReportVersion | null>(null);
@@ -132,10 +133,16 @@ export function ReportVersionHistory({ reportId, currentTitle, onRestore }: Repo
     <>
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2">
-            <History className="h-4 w-4" />
-            <span className="hidden sm:inline">History</span>
-          </Button>
+          {iconOnly ? (
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <History className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" className="gap-2">
+              <History className="h-4 w-4" />
+              <span className="hidden sm:inline">History</span>
+            </Button>
+          )}
         </SheetTrigger>
         <SheetContent className="w-full sm:max-w-md">
           <SheetHeader>

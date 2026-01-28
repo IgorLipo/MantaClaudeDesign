@@ -42,6 +42,7 @@ export interface ReportSchedule {
 interface ReportSchedulerProps {
   reportId: string;
   reportTitle: string;
+  iconOnly?: boolean;
 }
 
 const DAYS_OF_WEEK = [
@@ -101,7 +102,7 @@ function saveSchedules(schedules: ReportSchedule[]): void {
   sessionStorage.setItem("reportSchedules", JSON.stringify(schedules));
 }
 
-export function ReportScheduler({ reportId, reportTitle }: ReportSchedulerProps) {
+export function ReportScheduler({ reportId, reportTitle, iconOnly }: ReportSchedulerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [schedules, setSchedules] = useState<ReportSchedule[]>([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -223,10 +224,16 @@ export function ReportScheduler({ reportId, reportTitle }: ReportSchedulerProps)
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <CalendarClock className="h-4 w-4" />
-          <span className="hidden sm:inline">Schedule</span>
-        </Button>
+        {iconOnly ? (
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <CalendarClock className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" className="gap-2">
+            <CalendarClock className="h-4 w-4" />
+            <span className="hidden sm:inline">Schedule</span>
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>

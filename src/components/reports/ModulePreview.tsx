@@ -293,7 +293,7 @@ export function ModulePreview({ module, config, compact = false }: ModulePreview
 
     if (customText) {
       return (
-        <div className="prose prose-sm max-w-none text-muted-foreground">
+        <div className="prose prose-sm max-w-none text-muted-foreground break-words">
           <p>{customText}</p>
         </div>
       );
@@ -301,7 +301,7 @@ export function ModulePreview({ module, config, compact = false }: ModulePreview
 
     if (useAI) {
       return (
-        <div className="prose prose-sm max-w-none text-muted-foreground italic">
+        <div className="prose prose-sm max-w-none text-muted-foreground italic break-words">
           <p>
             This quarter demonstrated strong performance across key financial metrics.
             Revenue grew 12.4% year-over-year while maintaining healthy gross margins of 78.2%.

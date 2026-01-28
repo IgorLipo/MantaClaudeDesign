@@ -87,52 +87,84 @@ export default function ReportBuilder() {
     <TooltipProvider>
       <div className="min-h-screen bg-background flex flex-col">
         {/* Header */}
-        <div className="flex items-center gap-4 px-4 py-3 border-b border-border bg-card">
+        <div className="flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-3 border-b border-border bg-card">
           <Link to="/reports">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <div className="flex-1">
-            <h1 className="text-lg font-semibold text-foreground">Report Builder</h1>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-base sm:text-lg font-semibold text-foreground truncate">Report Builder</h1>
           </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Keyboard className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-xs">
-              <div className="text-xs space-y-1">
-                <p><kbd className="bg-muted px-1 rounded">{getShortcutLabel("save")}</kbd> Save</p>
-                <p><kbd className="bg-muted px-1 rounded">{getShortcutLabel("preview")}</kbd> Preview</p>
-                <p><kbd className="bg-muted px-1 rounded">Esc</kbd> Close modal</p>
-              </div>
-            </TooltipContent>
-          </Tooltip>
-          <ReportScheduler
-            reportId={report.id}
-            reportTitle={report.title}
-          />
-          <ReportVersionHistory
-            reportId={report.id}
-            currentTitle={report.title}
-            onRestore={restoreFromVersion}
-          />
-          <Button
-            variant="outline" 
-            size="sm" 
-            onClick={() => setIsComparisonOpen(true)}
-          >
-            <ArrowLeftRight className="h-4 w-4 mr-2" />
-            Compare
-          </Button>
-          <Link to="/reports/templates">
-            <Button variant="outline" size="sm">
-              <LayoutTemplate className="h-4 w-4 mr-2" />
-              Templates
+          
+          {/* Desktop: Show all buttons */}
+          <div className="hidden sm:flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Keyboard className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs">
+                <div className="text-xs space-y-1">
+                  <p><kbd className="bg-muted px-1 rounded">{getShortcutLabel("save")}</kbd> Save</p>
+                  <p><kbd className="bg-muted px-1 rounded">{getShortcutLabel("preview")}</kbd> Preview</p>
+                  <p><kbd className="bg-muted px-1 rounded">Esc</kbd> Close modal</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+            <ReportScheduler
+              reportId={report.id}
+              reportTitle={report.title}
+            />
+            <ReportVersionHistory
+              reportId={report.id}
+              currentTitle={report.title}
+              onRestore={restoreFromVersion}
+            />
+            <Button
+              variant="outline" 
+              size="sm" 
+              onClick={() => setIsComparisonOpen(true)}
+            >
+              <ArrowLeftRight className="h-4 w-4 mr-2" />
+              Compare
             </Button>
-          </Link>
+            <Link to="/reports/templates">
+              <Button variant="outline" size="sm">
+                <LayoutTemplate className="h-4 w-4 mr-2" />
+                Templates
+              </Button>
+            </Link>
+          </div>
+          
+          {/* Mobile: Actions - icon only */}
+          <div className="flex sm:hidden items-center flex-shrink-0">
+            <ReportScheduler
+              reportId={report.id}
+              reportTitle={report.title}
+              iconOnly
+            />
+            <ReportVersionHistory
+              reportId={report.id}
+              currentTitle={report.title}
+              onRestore={restoreFromVersion}
+              iconOnly
+            />
+            <Button
+              variant="ghost" 
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setIsComparisonOpen(true)}
+            >
+              <ArrowLeftRight className="h-4 w-4" />
+            </Button>
+            <Link to="/reports/templates">
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <LayoutTemplate className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Main Content */}
