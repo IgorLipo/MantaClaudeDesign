@@ -11,6 +11,7 @@ import { ReportPreviewModal } from "@/components/reports/ReportPreviewModal";
 import { MobileModuleDrawer } from "@/components/reports/MobileModuleDrawer";
 import { ReportComparisonView } from "@/components/reports/ReportComparisonView";
 import { ReportVersionHistory } from "@/components/reports/ReportVersionHistory";
+import { ReportScheduler } from "@/components/reports/ReportScheduler";
 import { useReportBuilder } from "@/hooks/useReportBuilder";
 import { useKeyboardShortcuts, getShortcutLabel } from "@/hooks/useKeyboardShortcuts";
 import { getModuleById, iconMap } from "@/data/mockReports";
@@ -109,12 +110,16 @@ export default function ReportBuilder() {
               </div>
             </TooltipContent>
           </Tooltip>
+          <ReportScheduler
+            reportId={report.id}
+            reportTitle={report.title}
+          />
           <ReportVersionHistory
             reportId={report.id}
             currentTitle={report.title}
             onRestore={restoreFromVersion}
           />
-          <Button 
+          <Button
             variant="outline" 
             size="sm" 
             onClick={() => setIsComparisonOpen(true)}
