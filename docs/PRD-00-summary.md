@@ -1,142 +1,108 @@
-# Finance Pulse - PRD Summary
+# Finance Pulse - PRD Summary (Demo Version)
 
 ## Overview
 
-Finance Pulse is a finance analytics and reporting dashboard for internal finance teams. It enables tracking of performance, productivity, and reporting metrics with a powerful, focused interface.
+Finance Pulse is a finance analytics and reporting dashboard demo. **No authentication required** - all features are fully open and accessible with mock data.
 
 ## PRD Index
 
-| # | Feature | Status | Dependencies |
-|---|---------|--------|--------------|
-| 01 | [Authentication & User Roles](./PRD-01-authentication.md) | Foundation | None |
-| 02 | [Dashboard (Command Center)](./PRD-02-dashboard.md) | Core | PRD-01 |
-| 03 | [Report Builder](./PRD-03-report-builder.md) | Core | PRD-01, PRD-02 |
-| 04 | [Productivity Tracker](./PRD-04-productivity-tracker.md) | Core | PRD-01 |
-| 05 | [Notifications System](./PRD-05-notifications.md) | Enhancement | PRD-01 |
-| 06 | [Settings & Preferences](./PRD-06-settings.md) | Enhancement | PRD-01 |
-| 07 | [AI Report Summarizer](./PRD-07-ai-summarizer.md) | Premium | PRD-01, PRD-03 |
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| 01 | ~~Authentication~~ | ❌ Removed | Not needed for demo |
+| 02 | Dashboard | ✅ Demo | Mock data, already built |
+| 03 | Report Builder | ✅ Demo | Drag-drop, local state |
+| 04 | Productivity Tracker | ✅ Demo | Timeline/Board views |
+| 05 | Notifications | ✅ Demo | Simplified, mock data |
+| 06 | Settings | ✅ Demo | Minimal, no persistence |
+| 07 | AI Summarizer | ✅ Full | Optional Cloud for real AI |
 
-## Recommended Build Order
+## Build Order
 
-### Phase 1: Foundation
-1. **PRD-01: Authentication** - Required for all other features
-   - User login/logout
-   - Role-based access control
-   - Session management
+### Phase 1: Navigation & Polish (Existing Dashboard)
+1. Add navigation structure (sidebar or header nav)
+2. Create placeholder pages for all routes
+3. Polish existing dashboard with mock data files
 
-### Phase 2: Core Experience  
-2. **PRD-02: Dashboard** - Already partially built, needs backend
-   - Connect to real data APIs
-   - Add real-time updates
-   - Implement navigation to detail views
+### Phase 2: Report Builder
+1. Module palette component
+2. Drag-and-drop canvas
+3. Configuration modals
+4. Preview modal
+5. Templates page
 
-3. **PRD-04: Productivity Tracker** - Parallel with Dashboard
-   - Task management
-   - Timeline view
-   - Team assignment
+### Phase 3: Productivity Tracker
+1. Mock task data
+2. Timeline view
+3. List view
+4. Board view (Kanban)
+5. Task detail sidebar
 
-4. **PRD-03: Report Builder** - After Dashboard data is available
-   - Drag-and-drop modules
-   - PDF/CSV export
-   - Template system
+### Phase 4: Notifications & Settings
+1. Notification bell + dropdown
+2. Notifications page
+3. Settings navigation
+4. Profile + Export preferences pages
 
-### Phase 3: Enhancements
-5. **PRD-05: Notifications** - After core flows exist
-   - Notification triggers from tasks/invoices
-   - Email delivery
-   - Preferences
+### Phase 5: AI Summarizer (Optional)
+1. If Cloud connected: Full AI integration
+2. If no Cloud: Demo mode with sample summary
 
-6. **PRD-06: Settings** - Alongside Notifications
-   - Profile management
-   - Export preferences
-   - Team management (Admin)
-
-### Phase 4: Premium
-7. **PRD-07: AI Summarizer** - After Report Builder complete
-   - Lovable AI integration
-   - Streaming responses
-   - Report integration
-
-## Dependency Graph
+## Architecture
 
 ```
-PRD-01 (Auth)
-    │
-    ├── PRD-02 (Dashboard)
-    │       │
-    │       └── PRD-03 (Report Builder)
-    │               │
-    │               └── PRD-07 (AI Summarizer)
-    │
-    ├── PRD-04 (Productivity)
-    │
-    ├── PRD-05 (Notifications)
-    │
-    └── PRD-06 (Settings)
+src/
+├── components/
+│   ├── dashboard/        # ✅ Exists
+│   ├── reports/          # New
+│   ├── productivity/     # New
+│   ├── notifications/    # New
+│   ├── settings/         # New
+│   └── layout/           # New (nav, header)
+├── data/
+│   ├── mockDashboard.ts  # Extract current data
+│   ├── mockReports.ts
+│   ├── mockTasks.ts
+│   ├── mockNotifications.ts
+│   └── mockSettings.ts
+├── pages/
+│   ├── Index.tsx         # ✅ Exists (Dashboard)
+│   ├── Reports.tsx
+│   ├── ReportBuilder.tsx
+│   ├── Productivity.tsx
+│   ├── Notifications.tsx
+│   ├── Settings.tsx
+│   └── AIPage.tsx
+└── hooks/
+    ├── useNotifications.ts
+    ├── useTasks.ts
+    └── useReports.ts
 ```
 
-## Database Schema Overview
+## What's NOT Included (Demo Scope)
 
-### Core Tables
-- `profiles` - User profile data (extends auth.users)
-- `user_roles` - Role assignments (admin, manager, contributor)
-- `transactions` - Financial transactions
-- `invoices` - Accounts payable/receivable
-- `budgets` - Department budget allocations
+- ❌ Authentication / Login
+- ❌ User roles / permissions
+- ❌ Database persistence
+- ❌ Real-time updates
+- ❌ Email notifications
+- ❌ Team management
+- ❌ Billing / payments
+- ❌ File uploads (avatar, logos)
 
-### Feature Tables
-- `reports` - User-created reports
-- `report_exports` - Export history
-- `reporting_cycles` - Time periods for tracking
-- `tasks` - Productivity tasks
-- `task_comments` - Task collaboration
-- `notifications` - User notifications
-- `notification_preferences` - Notification settings
-- `report_schedules` - Automated report delivery
-- `ai_summaries` - AI-generated summaries
-
-## Technical Stack
+## Tech Stack (Simplified)
 
 | Layer | Technology |
 |-------|------------|
 | Frontend | React + TypeScript + Vite |
 | Styling | Tailwind CSS + shadcn/ui |
-| State | React Query (server) + React (local) |
 | Charts | Recharts |
-| Backend | Lovable Cloud (Supabase) |
-| Auth | Supabase Auth |
-| Database | PostgreSQL with RLS |
-| AI | Lovable AI (Gemini/GPT) |
-| File Storage | Supabase Storage |
-
-## Milestones
-
-| Milestone | Features | Est. Effort |
-|-----------|----------|-------------|
-| M1: MVP | Auth + Dashboard + Basic Data | 2-3 weeks |
-| M2: Core | Report Builder + Productivity | 3-4 weeks |
-| M3: Polish | Notifications + Settings | 2-3 weeks |
-| M4: Premium | AI Summarizer | 1-2 weeks |
-
-## Key Design Principles
-
-1. **Powerful but focused** - Dense information without clutter
-2. **Fast feedback** - Loading states, optimistic updates
-3. **Mobile-ready** - All features work at 390px
-4. **Role-aware** - UI adapts to user permissions
-5. **Accessible** - Keyboard navigation, screen reader support
-
-## Risk Considerations
-
-| Risk | Mitigation |
-|------|------------|
-| Complex data relationships | Start with mock data, iterate on schema |
-| PDF generation performance | Offload to background, show progress |
-| AI cost/rate limits | Caching, usage quotas, fallback |
-| Multi-user conflicts | Optimistic locking, conflict resolution |
+| Drag & Drop | @dnd-kit/core |
+| State | React useState/useReducer |
+| Data | Static mock data files |
+| AI (optional) | Lovable Cloud + Lovable AI |
 
 ---
 
-**Total PRDs**: 7  
-**Build Order**: Foundation → Core → Enhancements → Premium  
-**Key Dependencies**: All features depend on PRD-01 (Authentication)
+**Total Active PRDs**: 6 (PRD-01 removed)
+**Database Required**: No (optional for AI)
+**Authentication Required**: No
