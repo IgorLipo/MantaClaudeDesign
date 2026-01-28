@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { DepartmentDetailModal } from "./modals/DepartmentDetailModal";
 
 interface Department {
   id: string;
@@ -99,6 +100,8 @@ function getProgressColor(status: Department['status']): string {
 
 export function BudgetUtilization() {
   const [activeFilter, setActiveFilter] = useState('All Depts');
+  const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Filter departments based on active filter
   const filteredDepartments = useMemo(() => {
@@ -156,105 +159,118 @@ export function BudgetUtilization() {
     });
   };
 
+  const handleDepartmentClick = (dept: Department) => {
+    setSelectedDepartment(dept);
+    setIsModalOpen(true);
+  };
+
   return (
-    <article className="card-elevated flex h-[580px] flex-col rounded-3xl bg-card p-6">
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h2 className="text-xl font-medium tracking-tight text-foreground">Budget Utilization</h2>
-          <p className="text-xs text-muted-foreground">Departmental breakdown for October</p>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="rounded-lg border border-border p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
-              <MoreHorizontal className="h-5 w-5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={handleExportCSV}>
-              Export CSV
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleExportPDF}>
-              Export PDF
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast.info("Budget Settings", { description: "Budget configuration would open here." })}>
-              Configure Budgets
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast.info("View History", { description: "Historical budget data would display here." })}>
-              View History
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {/* Filters */}
-      <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
-        {filters.map((filter) => (
-          <button 
-            key={filter}
-            onClick={() => handleFilterChange(filter)}
-            className={cn(
-              "whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
-              activeFilter === filter
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            {filter}
-          </button>
-        ))}
-      </div>
-
-      {/* Department List */}
-      <div className="flex-1 space-y-4 overflow-y-auto pr-2">
-        {filteredDepartments.length === 0 ? (
-          <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-            No departments match the selected filter.
+    <>
+      <article className="card-elevated flex h-[580px] flex-col rounded-3xl bg-card p-6">
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <h2 className="text-xl font-medium tracking-tight text-foreground">Budget Utilization</h2>
+            <p className="text-xs text-muted-foreground">Departmental breakdown for October</p>
           </div>
-        ) : (
-          filteredDepartments.map((dept) => {
-            const Icon = dept.icon;
-            const statusInfo = getStatusLabel(dept.status);
-            
-            return (
-              <div 
-                key={dept.id}
-                className="hover-lift rounded-2xl border border-border bg-muted/30 p-4 transition-all hover:bg-muted/50 cursor-pointer"
-                onClick={() => toast.info(`${dept.name} Details`, { description: `${dept.subcategory} • ${dept.spent} of ${dept.budget} utilized` })}
-              >
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-lg bg-card shadow-sm ring-1 ring-border",
-                      dept.iconColor
-                    )}>
-                      <Icon className="h-5 w-5" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="rounded-lg border border-border p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
+                <MoreHorizontal className="h-5 w-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={handleExportCSV}>
+                Export CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPDF}>
+                Export PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast.info("Budget Settings", { description: "Budget configuration would open here." })}>
+                Configure Budgets
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast.info("View History", { description: "Historical budget data would display here." })}>
+                View History
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Filters */}
+        <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
+          {filters.map((filter) => (
+            <button 
+              key={filter}
+              onClick={() => handleFilterChange(filter)}
+              className={cn(
+                "whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+                activeFilter === filter
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
+
+        {/* Department List */}
+        <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+          {filteredDepartments.length === 0 ? (
+            <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
+              No departments match the selected filter.
+            </div>
+          ) : (
+            filteredDepartments.map((dept) => {
+              const Icon = dept.icon;
+              const statusInfo = getStatusLabel(dept.status);
+              
+              return (
+                <div 
+                  key={dept.id}
+                  className="hover-lift rounded-2xl border border-border bg-muted/30 p-4 transition-all hover:bg-muted/50 cursor-pointer"
+                  onClick={() => handleDepartmentClick(dept)}
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "flex h-9 w-9 items-center justify-center rounded-lg bg-card shadow-sm ring-1 ring-border",
+                        dept.iconColor
+                      )}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{dept.name}</p>
+                        <p className="text-xs text-muted-foreground">{dept.subcategory}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{dept.name}</p>
-                      <p className="text-xs text-muted-foreground">{dept.subcategory}</p>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-foreground">{dept.utilization}%</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-foreground">{dept.utilization}%</p>
+                  
+                  <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div 
+                      className={cn("absolute left-0 top-0 h-full rounded-full transition-all duration-700", getProgressColor(dept.status))}
+                      style={{ width: `${dept.utilization}%` }}
+                    />
+                  </div>
+                  
+                  <div className="mt-2 flex justify-between text-xs font-medium">
+                    <span className="text-muted-foreground">{dept.spent} / {dept.budget}</span>
+                    <span className={statusInfo.className}>{statusInfo.text}</span>
                   </div>
                 </div>
-                
-                <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
-                  <div 
-                    className={cn("absolute left-0 top-0 h-full rounded-full transition-all duration-700", getProgressColor(dept.status))}
-                    style={{ width: `${dept.utilization}%` }}
-                  />
-                </div>
-                
-                <div className="mt-2 flex justify-between text-xs font-medium">
-                  <span className="text-muted-foreground">{dept.spent} / {dept.budget}</span>
-                  <span className={statusInfo.className}>{statusInfo.text}</span>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </article>
+              );
+            })
+          )}
+        </div>
+      </article>
+
+      <DepartmentDetailModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        department={selectedDepartment}
+      />
+    </>
   );
 }
