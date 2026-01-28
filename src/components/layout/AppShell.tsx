@@ -5,7 +5,7 @@ import {
   FileText, 
   ListTodo, 
   Settings, 
-  Sparkles,
+  Brain,
   Wallet,
   Menu,
   X,
@@ -19,7 +19,7 @@ const navItems = [
   { path: "/reports", label: "Reports", icon: FileText },
   { path: "/productivity", label: "Productivity", icon: ListTodo },
   { path: "/settings", label: "Settings", icon: Settings },
-  { path: "/ai", label: "AI Summarizer", icon: Sparkles },
+  { path: "/ai", label: "AI Summarizer", icon: Brain },
 ];
 
 interface AppShellProps {
