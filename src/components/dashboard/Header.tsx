@@ -3,6 +3,10 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState } from "react";
 import { exportToPDF } from "@/lib/exportUtils";
+import { useInvoices } from "@/hooks/useInvoices";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
 import {
   Dialog,
   DialogContent,
@@ -25,13 +29,45 @@ interface HeaderProps {
   period?: string;
 }
 
+const invoiceSchema = z.object({
+  vendor: z
+    .string()
+    .trim()
+    .min(1, { message: "Vendor name is required" })
+    .max(100, { message: "Vendor name must be under 100 characters" }),
+  amount: z
+    .string()
+    .trim()
+    .min(1, { message: "Amount is required" })
+    .refine(
+      (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) && n > 0 && n <= 100_000_000;
+      },
+      { message: "Amount must be a positive number" }
+    ),
+  dueDate: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Due date is required" }),
+  category: z.enum(["software", "payroll", "services", "infrastructure"]),
+});
+
+type InvoiceFormValues = z.infer<typeof invoiceSchema>;
+
 export function Header({ period = "Q3 FY2024 Reporting" }: HeaderProps) {
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
-  const [invoiceData, setInvoiceData] = useState({
-    vendor: '',
-    amount: '',
-    dueDate: '',
-    category: 'software',
+  const { addInvoice } = useInvoices();
+
+  const form = useForm<InvoiceFormValues>({
+    resolver: zodResolver(invoiceSchema),
+    defaultValues: {
+      vendor: "",
+      amount: "",
+      dueDate: "",
+      category: "software",
+    },
+    mode: "onSubmit",
   });
 
   const handleExport = () => {
@@ -66,20 +102,25 @@ export function Header({ period = "Q3 FY2024 Reporting" }: HeaderProps) {
     );
   };
 
-  const handleCreateInvoice = () => {
-    if (!invoiceData.vendor || !invoiceData.amount || !invoiceData.dueDate) {
-      toast.error("Missing Fields", {
-        description: "Please fill in all required fields.",
-      });
-      return;
-    }
+  const handleCreateInvoice = form.handleSubmit((values) => {
+    const created = addInvoice({
+      vendor: values.vendor.trim(),
+      amount: Number(values.amount),
+      dueDate: values.dueDate,
+      category: values.category,
+    });
 
     toast.success("Invoice Created", {
-      description: `Invoice for ${invoiceData.vendor} - $${parseFloat(invoiceData.amount).toLocaleString()} has been created.`,
+      description: `${created.invoiceNumber} • ${created.vendor} • $${created.amount.toLocaleString()}`,
     });
-    
-    setInvoiceData({ vendor: '', amount: '', dueDate: '', category: 'software' });
+
+    form.reset();
     setIsInvoiceModalOpen(false);
+  });
+
+  const handleOpenChange = (open: boolean) => {
+    setIsInvoiceModalOpen(open);
+    if (!open) form.reset();
   };
 
   return (
@@ -109,7 +150,7 @@ export function Header({ period = "Q3 FY2024 Reporting" }: HeaderProps) {
         </div>
       </header>
 
-      <Dialog open={isInvoiceModalOpen} onOpenChange={setIsInvoiceModalOpen}>
+      <Dialog open={isInvoiceModalOpen} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Create New Invoice</DialogTitle>
@@ -123,9 +164,11 @@ export function Header({ period = "Q3 FY2024 Reporting" }: HeaderProps) {
               <Input
                 id="vendor"
                 placeholder="e.g., Salesforce Enterprise"
-                value={invoiceData.vendor}
-                onChange={(e) => setInvoiceData({ ...invoiceData, vendor: e.target.value })}
+                {...form.register("vendor")}
               />
+              {form.formState.errors.vendor && (
+                <p className="text-xs text-destructive">{form.formState.errors.vendor.message}</p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="amount">Amount ($) *</Label>
@@ -133,35 +176,43 @@ export function Header({ period = "Q3 FY2024 Reporting" }: HeaderProps) {
                 id="amount"
                 type="number"
                 placeholder="e.g., 12500"
-                value={invoiceData.amount}
-                onChange={(e) => setInvoiceData({ ...invoiceData, amount: e.target.value })}
+                inputMode="decimal"
+                {...form.register("amount")}
               />
+              {form.formState.errors.amount && (
+                <p className="text-xs text-destructive">{form.formState.errors.amount.message}</p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="dueDate">Due Date *</Label>
               <Input
                 id="dueDate"
                 type="date"
-                value={invoiceData.dueDate}
-                onChange={(e) => setInvoiceData({ ...invoiceData, dueDate: e.target.value })}
+                {...form.register("dueDate")}
               />
+              {form.formState.errors.dueDate && (
+                <p className="text-xs text-destructive">{form.formState.errors.dueDate.message}</p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="category">Category</Label>
-              <Select
-                value={invoiceData.category}
-                onValueChange={(value) => setInvoiceData({ ...invoiceData, category: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="software">Software</SelectItem>
-                  <SelectItem value="payroll">Payroll</SelectItem>
-                  <SelectItem value="services">Services</SelectItem>
-                  <SelectItem value="infrastructure">Infrastructure</SelectItem>
-                </SelectContent>
-              </Select>
+              <Controller
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="software">Software</SelectItem>
+                      <SelectItem value="payroll">Payroll</SelectItem>
+                      <SelectItem value="services">Services</SelectItem>
+                      <SelectItem value="infrastructure">Infrastructure</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
           </div>
           <DialogFooter>

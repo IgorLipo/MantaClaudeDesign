@@ -1,36 +1,7 @@
-import { FileCheck, Users, Calendar } from "lucide-react";
+import { FileCheck, Users, Calendar, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-
-interface Invoice {
-  id: string;
-  vendor: string;
-  dueInfo: string;
-  invoiceNumber?: string;
-  amount: number;
-  status: 'pending' | 'scheduled' | 'paid' | 'overdue';
-  category: 'software' | 'payroll' | 'services';
-}
-
-const invoices: Invoice[] = [
-  {
-    id: '1',
-    vendor: 'Salesforce Enterprise',
-    dueInfo: 'Due Tomorrow',
-    invoiceNumber: '#INV-2092',
-    amount: 12500,
-    status: 'pending',
-    category: 'software'
-  },
-  {
-    id: '2',
-    vendor: 'Contractor Payouts',
-    dueInfo: 'Oct 24',
-    amount: 8450,
-    status: 'scheduled',
-    category: 'payroll'
-  }
-];
+import { useInvoices, type Invoice } from "@/hooks/useInvoices";
 
 function getStatusBadge(status: Invoice['status']) {
   const styles = {
@@ -61,7 +32,8 @@ function getCategoryIcon(category: Invoice['category']) {
   const icons = {
     software: { icon: FileCheck, bg: 'bg-warning/10', color: 'text-warning' },
     payroll: { icon: Users, bg: 'bg-accent/10', color: 'text-accent' },
-    services: { icon: FileCheck, bg: 'bg-info/10', color: 'text-info' }
+    services: { icon: FileCheck, bg: 'bg-info/10', color: 'text-info' },
+    infrastructure: { icon: Server, bg: 'bg-success/10', color: 'text-success' },
   };
   
   const { icon: Icon, bg, color } = icons[category];
@@ -74,6 +46,8 @@ function getCategoryIcon(category: Invoice['category']) {
 }
 
 export function AccountsPayable() {
+  const { invoices } = useInvoices();
+
   const handleCalendar = () => {
     toast.info("Payment Calendar", {
       description: "Calendar view of upcoming payments would open here.",
@@ -91,7 +65,7 @@ export function AccountsPayable() {
       <div className="mb-5 flex items-start justify-between">
         <div>
           <h2 className="text-xl font-medium tracking-tight text-foreground">Accounts Payable</h2>
-          <p className="text-sm text-muted-foreground">3 invoices due this week</p>
+          <p className="text-sm text-muted-foreground">{invoices.length} open invoices</p>
         </div>
         <button 
           onClick={handleCalendar}
