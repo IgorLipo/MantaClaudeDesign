@@ -1,6 +1,13 @@
 import { Code, Megaphone, HandCoins, Building, MoreHorizontal, LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Department {
   id: string;
@@ -99,9 +106,24 @@ export function BudgetUtilization() {
           <h2 className="text-xl font-medium tracking-tight text-foreground">Budget Utilization</h2>
           <p className="text-xs text-muted-foreground">Departmental breakdown for October</p>
         </div>
-        <button className="rounded-lg border border-border p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
-          <MoreHorizontal className="h-5 w-5" />
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="rounded-lg border border-border p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
+              <MoreHorizontal className="h-5 w-5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={() => toast.info("Budget Export", { description: "Downloading budget report as CSV..." })}>
+              Export CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toast.info("Budget Settings", { description: "Budget configuration would open here." })}>
+              Configure Budgets
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toast.info("View History", { description: "Historical budget data would display here." })}>
+              View History
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Filters */}

@@ -1,5 +1,6 @@
 import { Server, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Transaction {
   id: string;
@@ -35,7 +36,8 @@ export function LiveLedger({
         {transactions.map((tx) => (
           <div 
             key={tx.id}
-            className="flex items-center justify-between rounded-xl bg-muted/50 p-3 ring-1 ring-border"
+            onClick={() => toast.info(`Transaction: ${tx.vendor}`, { description: `${tx.category} - ${tx.type === 'credit' ? '+' : '-'}$${Math.abs(tx.amount).toLocaleString()}` })}
+            className="flex items-center justify-between rounded-xl bg-muted/50 p-3 ring-1 ring-border cursor-pointer hover:bg-muted/70 transition-colors"
           >
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-card text-accent ring-1 ring-border">

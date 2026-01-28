@@ -1,6 +1,6 @@
 import { Task, TaskStatus, statusLabels, statusColors, demoUsers, priorityColors } from "@/data/mockTasks";
 import { cn } from "@/lib/utils";
-import { X, Calendar, User, Flag } from "lucide-react";
+import { X, Calendar, User, Flag, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -12,16 +12,38 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 interface TaskDetailSidebarProps {
   task: Task | null;
   isOpen: boolean;
   onClose: () => void;
   onUpdate: (taskId: string, updates: Partial<Task>) => void;
+  onDelete?: (taskId: string) => void;
 }
 
-export function TaskDetailSidebar({ task, isOpen, onClose, onUpdate }: TaskDetailSidebarProps) {
+export function TaskDetailSidebar({ task, isOpen, onClose, onUpdate, onDelete }: TaskDetailSidebarProps) {
   if (!task) return null;
+
+  const handleSave = () => {
+    toast.success("Task saved!", {
+      description: `"${task.title}" has been updated.`,
+    });
+  };
+
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete(task.id);
+      onClose();
+      toast.success("Task deleted", {
+        description: "The task has been removed.",
+      });
+    } else {
+      toast.info("Delete Task", {
+        description: "Task deletion is simulated in demo mode.",
+      });
+    }
+  };
 
   return (
     <>
@@ -190,6 +212,18 @@ export function TaskDetailSidebar({ task, isOpen, onClose, onUpdate }: TaskDetai
               {task.phase}
             </div>
           </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="flex-shrink-0 p-4 border-t border-border flex items-center justify-between">
+          <Button variant="outline" size="sm" onClick={handleDelete} className="text-destructive hover:text-destructive">
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
+          <Button size="sm" onClick={handleSave}>
+            <Save className="h-4 w-4 mr-2" />
+            Save Changes
+          </Button>
         </div>
       </aside>
     </>

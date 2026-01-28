@@ -1,5 +1,12 @@
 import { MoreHorizontal } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts";
+import { XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const data = [
   { month: 'May', value: 1.8 },
@@ -18,9 +25,24 @@ export function CashFlowChart() {
           <h2 className="text-lg font-medium tracking-tight text-primary-foreground">Operating Cash</h2>
           <p className="text-xs text-primary-foreground/60">Trailing 6 months</p>
         </div>
-        <button className="text-primary-foreground/60 hover:text-primary-foreground transition">
-          <MoreHorizontal className="h-5 w-5" />
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="text-primary-foreground/60 hover:text-primary-foreground transition">
+              <MoreHorizontal className="h-5 w-5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onClick={() => toast.info("Export Chart", { description: "Chart data exported as CSV." })}>
+              Export Data
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toast.info("View Forecast", { description: "12-month cash forecast would display here." })}>
+              View Forecast
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toast.info("Full Report", { description: "Opening detailed cash flow report..." })}>
+              Full Report
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       
       <div className="h-48 w-full">

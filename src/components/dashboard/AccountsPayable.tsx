@@ -1,5 +1,6 @@
 import { FileCheck, Users, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Invoice {
   id: string;
@@ -73,6 +74,18 @@ function getCategoryIcon(category: Invoice['category']) {
 }
 
 export function AccountsPayable() {
+  const handleCalendar = () => {
+    toast.info("Payment Calendar", {
+      description: "Calendar view of upcoming payments would open here.",
+    });
+  };
+
+  const handleInvoiceClick = (invoice: Invoice) => {
+    toast.info(`Invoice: ${invoice.vendor}`, {
+      description: `Invoice details for ${invoice.invoiceNumber || "payment"} - $${invoice.amount.toLocaleString()}`,
+    });
+  };
+
   return (
     <article className="card-elevated rounded-3xl bg-card p-6">
       <div className="mb-5 flex items-start justify-between">
@@ -80,7 +93,10 @@ export function AccountsPayable() {
           <h2 className="text-xl font-medium tracking-tight text-foreground">Accounts Payable</h2>
           <p className="text-sm text-muted-foreground">3 invoices due this week</p>
         </div>
-        <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-border hover:bg-muted text-muted-foreground transition">
+        <button 
+          onClick={handleCalendar}
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border hover:bg-muted text-muted-foreground transition"
+        >
           <Calendar className="h-[18px] w-[18px]" />
         </button>
       </div>
@@ -89,7 +105,8 @@ export function AccountsPayable() {
         {invoices.map((invoice) => (
           <div 
             key={invoice.id}
-            className="hover-lift flex items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-card transition-all"
+            onClick={() => handleInvoiceClick(invoice)}
+            className="hover-lift flex items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-card transition-all cursor-pointer"
           >
             {getCategoryIcon(invoice.category)}
             
