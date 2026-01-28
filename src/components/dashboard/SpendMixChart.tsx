@@ -1,6 +1,7 @@
 import { Settings } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
+import { exportChartData, exportToPDF } from "@/lib/exportUtils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,8 +38,14 @@ export function SpendMixChart() {
             <DropdownMenuItem onClick={() => toast.info("View Breakdown", { description: "Detailed spend breakdown would display." })}>
               Full Breakdown
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast.info("Export", { description: "Spend mix data exported." })}>
-              Export Data
+            <DropdownMenuItem onClick={() => exportChartData('Spend Mix', data.map(d => ({ label: d.name, value: `${d.value}%` })))}>
+              Export CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportToPDF(
+              { title: 'Spend Mix Report', sections: [{ heading: 'Category Breakdown', data: [['Category', 'Percentage'], ...data.map(d => [d.name, `${d.value}%`])] }] },
+              { filename: 'spend-mix-report', title: 'Spend Mix Report' }
+            )}>
+              Export PDF
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

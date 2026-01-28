@@ -1,6 +1,7 @@
 import { History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { quickExportCSV } from "@/lib/exportUtils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,8 +70,12 @@ export function TeamActivity() {
             <DropdownMenuItem onClick={() => toast.info("Filter", { description: "Activity filters would display." })}>
               Filter by Team
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast.info("Export", { description: "Activity log exported." })}>
-              Export Log
+            <DropdownMenuItem onClick={() => quickExportCSV(
+              ['Name', 'Action', 'Time'],
+              activities.map(a => [a.name, a.action, `${a.timeAgo} ago`]),
+              `team-activity-${new Date().toISOString().split('T')[0]}`
+            )}>
+              Export Log (CSV)
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

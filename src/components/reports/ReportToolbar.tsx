@@ -10,6 +10,13 @@ import {
 } from "@/components/ui/select";
 import { periodOptions } from "@/data/mockReports";
 import { toast } from "sonner";
+import { exportToPDF, quickExportCSV } from "@/lib/exportUtils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ReportToolbarProps {
   title: string;
@@ -28,15 +35,33 @@ export function ReportToolbar({
   onPreview,
   moduleCount,
 }: ReportToolbarProps) {
-  const handleExport = () => {
-    toast.success("Report exported!", {
-      description: "Your report has been downloaded as PDF.",
-    });
+  const handleExportPDF = () => {
+    exportToPDF(
+      {
+        title: title || 'Financial Report',
+        sections: [{
+          heading: 'Report Summary',
+          data: [
+            ['Report', 'Period', 'Modules'],
+            [title, period, `${moduleCount} modules`]
+          ]
+        }]
+      },
+      { filename: `${title.toLowerCase().replace(/\s+/g, '-')}-${period}`, title }
+    );
+  };
+
+  const handleExportCSV = () => {
+    quickExportCSV(
+      ['Report Title', 'Period', 'Module Count', 'Generated'],
+      [[title, period, `${moduleCount}`, new Date().toISOString()]],
+      `${title.toLowerCase().replace(/\s+/g, '-')}-${period}`
+    );
   };
 
   const handleSave = () => {
     toast.success("Report saved!", {
-      description: "Your changes have been saved locally.",
+      description: `"${title}" has been saved locally.`,
     });
   };
 
@@ -77,10 +102,22 @@ export function ReportToolbar({
           <Save className="h-4 w-4 mr-2" />
           Save
         </Button>
-        <Button size="sm" onClick={handleExport}>
-          <Download className="h-4 w-4 mr-2" />
-          Export
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleExportPDF}>
+              Export as PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExportCSV}>
+              Export as CSV
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

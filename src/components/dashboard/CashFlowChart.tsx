@@ -1,6 +1,7 @@
 import { MoreHorizontal } from "lucide-react";
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts";
 import { toast } from "sonner";
+import { exportChartData, exportToPDF } from "@/lib/exportUtils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,8 +33,14 @@ export function CashFlowChart() {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem onClick={() => toast.info("Export Chart", { description: "Chart data exported as CSV." })}>
-              Export Data
+            <DropdownMenuItem onClick={() => exportChartData('Operating Cash Flow', data.map(d => ({ label: d.month, value: `$${d.value}M` })))}>
+              Export CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportToPDF(
+              { title: 'Operating Cash Flow Report', sections: [{ heading: 'Monthly Cash Flow', data: [['Month', 'Value'], ...data.map(d => [d.month, `$${d.value}M`])] }] },
+              { filename: 'cash-flow-report', title: 'Cash Flow Report' }
+            )}>
+              Export PDF
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => toast.info("View Forecast", { description: "12-month cash forecast would display here." })}>
               View Forecast
