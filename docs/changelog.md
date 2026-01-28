@@ -1,5 +1,38 @@
 # Finance Pulse - Changelog
 
+## [Phase 3] - January 2026
+
+### Added
+- **Productivity Tracker** (`src/pages/Productivity.tsx`)
+  - Full task tracking interface with 3 view modes
+  - Cycle selector for different reporting periods
+  - Add Task button (demo mode notification)
+
+- **Productivity Components** (`src/components/productivity/`)
+  - `TimelineView.tsx` - Horizontal timeline with task bars and due date markers
+  - `ListView.tsx` - Sortable table view with click-to-sort headers
+  - `BoardView.tsx` - Kanban board with drag-and-drop between columns
+  - `TaskDetailSidebar.tsx` - Full task editing sidebar
+  - `ViewToggle.tsx` - Toggle between timeline/list/board views
+
+- **Task Data** (`src/data/mockTasks.ts`)
+  - 10 demo tasks across 4 phases
+  - 4 demo users with initials
+  - Status/priority labels and colors
+
+- **Task Hook** (`src/hooks/useTasks.ts`)
+  - Full state management for task updates
+  - View mode switching
+  - Task selection and sidebar state
+
+### Technical Notes
+- Timeline shows full month with week markers
+- Board uses native HTML5 drag-and-drop
+- Task updates persist during session only
+- Mobile shows list view by default (timeline complex for touch)
+
+---
+
 ## [Phase 2] - January 2026
 
 ### Added

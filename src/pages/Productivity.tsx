@@ -1,26 +1,101 @@
-import { Construction } from "lucide-react";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cycleOptions, demoCycle } from "@/data/mockTasks";
+import { useTasks } from "@/hooks/useTasks";
+import { ViewToggle } from "@/components/productivity/ViewToggle";
+import { TimelineView } from "@/components/productivity/TimelineView";
+import { ListView } from "@/components/productivity/ListView";
+import { BoardView } from "@/components/productivity/BoardView";
+import { TaskDetailSidebar } from "@/components/productivity/TaskDetailSidebar";
+import { toast } from "sonner";
 
 export default function Productivity() {
+  const {
+    tasks,
+    selectedTask,
+    viewMode,
+    isSidebarOpen,
+    setViewMode,
+    updateTaskStatus,
+    updateTask,
+    openTaskDetail,
+    closeTaskDetail,
+  } = useTasks();
+
+  const handleAddTask = () => {
+    toast.info("Add Task", {
+      description: "Task creation is not available in demo mode.",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Productivity Tracker</h1>
-          <p className="text-sm text-muted-foreground">Track reporting cycles and team tasks</p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              Productivity Tracker
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Track reporting cycles and team tasks
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Select defaultValue={demoCycle.id}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {cycleOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button onClick={handleAddTask} className="gap-2">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Add Task</span>
+            </Button>
+          </div>
         </div>
 
-        {/* Placeholder */}
-        <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-border rounded-3xl bg-muted/20">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 mb-4">
-            <Construction className="h-8 w-8 text-accent" />
-          </div>
-          <h2 className="text-lg font-medium text-foreground mb-2">Coming in Phase 3</h2>
-          <p className="text-sm text-muted-foreground max-w-sm">
-            Timeline, list, and board views for task tracking will be implemented here.
-          </p>
+        {/* View Toggle */}
+        <div className="mb-6">
+          <ViewToggle value={viewMode} onChange={setViewMode} />
         </div>
+
+        {/* Views */}
+        {viewMode === "timeline" && (
+          <TimelineView tasks={tasks} onTaskClick={openTaskDetail} />
+        )}
+        {viewMode === "list" && (
+          <ListView tasks={tasks} onTaskClick={openTaskDetail} />
+        )}
+        {viewMode === "board" && (
+          <BoardView
+            tasks={tasks}
+            onTaskClick={openTaskDetail}
+            onStatusChange={updateTaskStatus}
+          />
+        )}
       </div>
+
+      {/* Task Detail Sidebar */}
+      <TaskDetailSidebar
+        task={selectedTask}
+        isOpen={isSidebarOpen}
+        onClose={closeTaskDetail}
+        onUpdate={updateTask}
+      />
     </div>
   );
 }
