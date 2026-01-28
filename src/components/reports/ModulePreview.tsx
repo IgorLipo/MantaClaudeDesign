@@ -19,6 +19,8 @@ import {
 import { WaterfallChart } from "./charts/WaterfallChart";
 import { ComboChart } from "./charts/ComboChart";
 import { ForecastChart } from "./charts/ForecastChart";
+import { GaugeChart } from "./charts/GaugeChart";
+import { SparklineGrid } from "./charts/SparklineGrid";
 
 interface ModulePreviewProps {
   module: ReportModule;
@@ -55,6 +57,18 @@ const pieData = [
 export function ModulePreview({ module, config, compact = false }: ModulePreviewProps) {
   const chartType = (config.chartType as string) || "bar";
   const showLegend = (config.showLegend as boolean) ?? true;
+  const showSparklines = (config.showSparklines as boolean) ?? false;
+
+  // CEO Dashboard with sparklines
+  if (module.id === "ceo_dashboard" && showSparklines) {
+    return <SparklineGrid config={config} compact={compact} />;
+  }
+
+  // Gauge charts for compliance/risk indicators
+  if (module.id === "policy_compliance" || module.id === "risk_indicators") {
+    return <GaugeChart module={module} config={config} compact={compact} />;
+  }
+
 
   // KPI Grid Preview
   if (module.type === "kpi" || (module.type === "metric" && module.id !== "profitability_metrics")) {
