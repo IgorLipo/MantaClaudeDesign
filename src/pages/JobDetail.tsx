@@ -165,6 +165,48 @@ export default function JobDetail() {
     }
   }, [job?.status, role]);
 
+  const ensureEngineersAssigned = async () => {
+    if (!id || role !== "admin" || !user?.id) return;
+
+    const { data: engRoles, error: engRolesError } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "engineer");
+
+    if (engRolesError || !engRoles?.length) return;
+
+    const { data: existingAssignments, error: existingError } = await (supabase as any)
+      .from("job_assignments")
+      .select("scaffolder_id")
+      .eq("job_id", id)
+      .eq("assignment_role", "engineer");
+
+    if (existingError) return;
+
+    const existingEngineerIds = new Set((existingAssignments || []).map((a: any) => a.scaffolder_id));
+    const toInsert = engRoles
+      .filter((eng) => !existingEngineerIds.has(eng.user_id))
+      .map((eng) => ({
+        job_id: id,
+        scaffolder_id: eng.user_id,
+        assigned_by: user.id,
+        assignment_role: "engineer",
+      }));
+
+    if (toInsert.length === 0) return;
+
+    const { error: insertError } = await (supabase as any).from("job_assignments").insert(toInsert);
+    if (insertError) {
+      toast({ title: "Engineer assignment failed", description: insertError.message, variant: "destructive" });
+      return;
+    }
+
+    for (const assignment of toInsert) {
+      notifyEngineerAssigned(assignment.scaffolder_id, job.title, id);
+      logAudit(user.id, "engineer_assigned", "assignment", id, { engineer_id: assignment.scaffolder_id });
+    }
+  };
+
   const updateStatus = async (newStatus: string) => {
     const oldStatus = job.status;
     const { error } = await supabase.from("jobs").update({ status: newStatus as any, updated_at: new Date().toISOString() }).eq("id", id);
@@ -176,6 +218,10 @@ export default function JobDetail() {
       logAudit(user?.id, "status_change", "job", id, { from: oldStatus, to: newStatus });
       const assignedIds = assignments.map((a) => a.scaffolder_id);
       notifyStatusChange(id!, job.title, newStatus, job.owner_id, assignedIds);
+
+      if (role === "admin" && ["photo_review", "quote_pending"].includes(newStatus)) {
+        await ensureEngineersAssigned();
+      }
     }
   };
 
@@ -205,22 +251,9 @@ export default function JobDetail() {
     toast({ title: `Photo ${status}` });
     logAudit(user?.id, `photo_${status}`, "photo", photoId);
 
-    // When admin approves photos, auto-assign all engineers to this job
+    // Fallback: approving any photo also ensures engineers are assigned
     if (status === "approved" && role === "admin") {
-      const { data: engRoles } = await supabase.from("user_roles").select("user_id").eq("role", "engineer");
-      if (engRoles) {
-        for (const eng of engRoles) {
-          // Check if not already assigned
-          const { data: existing } = await (supabase as any).from("job_assignments")
-            .select("id").eq("job_id", id).eq("scaffolder_id", eng.user_id).eq("assignment_role", "engineer").maybeSingle();
-          if (!existing) {
-            await (supabase as any).from("job_assignments").insert({
-              job_id: id, scaffolder_id: eng.user_id, assigned_by: user?.id, assignment_role: "engineer",
-            });
-            notifyEngineerAssigned(eng.user_id, job.title, id!);
-          }
-        }
-      }
+      await ensureEngineersAssigned();
     }
     fetchAll();
   };
