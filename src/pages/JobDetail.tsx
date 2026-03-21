@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import {
   ArrowLeft, MapPin, Calendar, Camera, FileText, Upload,
   CheckCircle2, XCircle, DollarSign, Send, UserPlus, HardHat,
   ClipboardList, ChevronDown, ImagePlus, Pencil, History,
-  MessageSquare,
+  MessageSquare, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
