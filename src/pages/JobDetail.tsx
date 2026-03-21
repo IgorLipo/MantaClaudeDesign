@@ -311,20 +311,25 @@ export default function JobDetail() {
     setEditSubmitting(false);
   };
 
-  const handleGuidedComplete = () => {
+  const handleGuidedComplete = async () => {
     setGuidedUploadOpen(false);
     setSubmissionConfirmed(true);
     fetchAll();
     toast({ title: "Photos submitted for review" });
     // Auto-submit the job
     if (job.status === "draft") {
-      supabase.from("jobs").update({ status: "submitted" as any, updated_at: new Date().toISOString() }).eq("id", id).then(() => {
-        setJob((prev: any) => ({ ...prev, status: "submitted" }));
-      });
+      await supabase.from("jobs").update({ status: "submitted" as any, updated_at: new Date().toISOString() }).eq("id", id);
+      setJob((prev: any) => ({ ...prev, status: "submitted" }));
     }
     // Notify the owner with confirmation message
     if (user?.id && id) {
       notifyOwnerPhotoSubmitted(user.id, job.title, id);
+    }
+    // Notify ALL admins that photos were submitted
+    if (id) {
+      const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+      const aids = adminRoles?.map((r) => r.user_id) || [];
+      notifyPhotoUploaded(id, job.title, aids);
     }
   };
 
