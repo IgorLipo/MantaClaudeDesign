@@ -346,16 +346,14 @@ export default function JobDetail() {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent>
-              {(role === "admin" || role === "scaffolder") && (
-                <div className="mb-3">
-                  <label className="cursor-pointer">
-                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
-                    <Button size="sm" variant="outline" className="text-xs pointer-events-none" asChild>
-                      <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Photo"}</span>
-                    </Button>
-                  </label>
-                </div>
-              )}
+              <div className="mb-3">
+                <label className="cursor-pointer">
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
+                  <Button size="sm" variant="outline" className="text-xs pointer-events-none" asChild>
+                    <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Photo"}</span>
+                  </Button>
+                </label>
+              </div>
               {photos.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">No photos yet</p>
               ) : (
