@@ -67,7 +67,7 @@ export function SchedulingPanel({ job, role, onUpdate }: SchedulingPanelProps) {
         });
       }
       // Notify assigned scaffolders
-      const { data: assigns } = await supabase.from("job_assignments").select("scaffolder_id").eq("job_id", job.id).eq("assignment_role", "scaffolder");
+      const { data: assigns } = await (supabase as any).from("job_assignments").select("scaffolder_id").eq("job_id", job.id).eq("assignment_role", "scaffolder");
       if (assigns) {
         for (const a of assigns) {
           await notify({
