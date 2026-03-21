@@ -47,10 +47,10 @@ export async function notifyStatusChange(
   // Notify assigned engineers about status changes
   const engineerStatuses = ["scheduled", "in_progress", "completed"];
   if (engineerStatuses.includes(newStatus)) {
-    const { data: engAssigns } = await supabase.from("job_assignments")
+    const { data: engAssigns } = await (supabase as any).from("job_assignments")
       .select("scaffolder_id")
       .eq("job_id", jobId)
-      .eq("assignment_role" as any, "engineer");
+      .eq("assignment_role", "engineer");
     if (engAssigns) {
       for (const ea of engAssigns) {
         await notify({ userId: ea.scaffolder_id, type: "status_change", title: `Job ${label}`, message: msg, data: { job_id: jobId } });
