@@ -7,28 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  ArrowLeft,
-  MapPin,
-  Calendar,
-  Camera,
-  FileText,
-  Upload,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  DollarSign,
-  User,
-  Send,
+  ArrowLeft, MapPin, Calendar, Camera, FileText, Upload,
+  CheckCircle2, XCircle, DollarSign, Send, UserPlus, HardHat,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { logAudit } from "@/hooks/useAuditLog";
 
 const statusMap: Record<string, string> = {
   draft: "Draft", submitted: "Submitted", photo_review: "Photo Review",
@@ -56,21 +44,16 @@ const transitions: Record<string, string[]> = {
 };
 
 interface Quote {
-  id: string;
-  amount: number;
-  notes: string;
-  submitted_at: string;
-  review_decision: string | null;
-  scaffolder_id: string;
-  reviewed_by: string | null;
+  id: string; amount: number; notes: string; submitted_at: string;
+  review_decision: string | null; scaffolder_id: string; reviewed_by: string | null;
 }
 
 interface Photo {
-  id: string;
-  url: string;
-  review_status: string;
-  created_at: string;
-  uploader_id: string | null;
+  id: string; url: string; review_status: string; created_at: string; uploader_id: string | null;
+}
+
+interface Scaffolder {
+  user_id: string; first_name: string; last_name: string;
 }
 
 export default function JobDetail() {
@@ -81,35 +64,50 @@ export default function JobDetail() {
   const [job, setJob] = useState<any>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [scaffolders, setScaffolders] = useState<Scaffolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [quoteOpen, setQuoteOpen] = useState(false);
   const [quoteAmount, setQuoteAmount] = useState("");
   const [quoteNotes, setQuoteNotes] = useState("");
   const [submittingQuote, setSubmittingQuote] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [selectedScaffolder, setSelectedScaffolder] = useState("");
 
   const fetchAll = useCallback(async () => {
     if (!id) return;
-    const [jobRes, quotesRes, photosRes] = await Promise.all([
+    const [jobRes, quotesRes, photosRes, assignRes] = await Promise.all([
       supabase.from("jobs").select("*").eq("id", id).maybeSingle(),
       supabase.from("quotes").select("*").eq("job_id", id).order("submitted_at", { ascending: false }),
       supabase.from("photos").select("*").eq("job_id", id).order("created_at", { ascending: false }),
+      supabase.from("job_assignments").select("*").eq("job_id", id),
     ]);
     if (jobRes.data) setJob(jobRes.data);
     if (quotesRes.data) setQuotes(quotesRes.data as Quote[]);
     if (photosRes.data) setPhotos(photosRes.data as Photo[]);
+    if (assignRes.data) setAssignments(assignRes.data);
+
+    // Fetch scaffolders for assignment
+    const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "scaffolder");
+    if (roles && roles.length > 0) {
+      const { data: profiles } = await supabase.from("profiles").select("user_id, first_name, last_name").in("user_id", roles.map((r) => r.user_id));
+      if (profiles) setScaffolders(profiles);
+    }
     setLoading(false);
   }, [id]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const updateStatus = async (newStatus: string) => {
+    const oldStatus = job.status;
     const { error } = await supabase.from("jobs").update({ status: newStatus as any, updated_at: new Date().toISOString() }).eq("id", id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       setJob({ ...job, status: newStatus });
       toast({ title: `Status → ${statusMap[newStatus]}` });
+      logAudit(user?.id, "status_change", "job", id, { from: oldStatus, to: newStatus });
     }
   };
 
@@ -126,13 +124,9 @@ export default function JobDetail() {
       return;
     }
     const { data: urlData } = supabase.storage.from("job-photos").getPublicUrl(path);
-    await supabase.from("photos").insert({
-      job_id: id,
-      uploader_id: user.id,
-      url: urlData.publicUrl,
-      review_status: "pending",
-    });
+    await supabase.from("photos").insert({ job_id: id, uploader_id: user.id, url: urlData.publicUrl, review_status: "pending" });
     toast({ title: "Photo uploaded" });
+    logAudit(user.id, "photo_upload", "photo", id);
     setUploading(false);
     fetchAll();
   };
@@ -140,22 +134,19 @@ export default function JobDetail() {
   const reviewPhoto = async (photoId: string, status: "approved" | "rejected") => {
     await supabase.from("photos").update({ review_status: status }).eq("id", photoId);
     toast({ title: `Photo ${status}` });
+    logAudit(user?.id, `photo_${status}`, "photo", photoId);
     fetchAll();
   };
 
   const submitQuote = async () => {
     if (!user || !id) return;
     setSubmittingQuote(true);
-    const { error } = await supabase.from("quotes").insert({
-      job_id: id,
-      scaffolder_id: user.id,
-      amount: parseFloat(quoteAmount),
-      notes: quoteNotes,
-    });
+    const { error } = await supabase.from("quotes").insert({ job_id: id, scaffolder_id: user.id, amount: parseFloat(quoteAmount), notes: quoteNotes });
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Quote submitted" });
+      logAudit(user.id, "quote_submit", "quote", id, { amount: quoteAmount });
       setQuoteOpen(false);
       setQuoteAmount("");
       setQuoteNotes("");
@@ -166,24 +157,39 @@ export default function JobDetail() {
 
   const reviewQuote = async (quoteId: string, decision: "accepted" | "rejected" | "countered") => {
     if (!user) return;
-    await supabase.from("quotes").update({
-      review_decision: decision,
-      reviewed_by: user.id,
-      reviewed_at: new Date().toISOString(),
-    }).eq("id", quoteId);
+    await supabase.from("quotes").update({ review_decision: decision, reviewed_by: user.id, reviewed_at: new Date().toISOString() }).eq("id", quoteId);
     toast({ title: `Quote ${decision}` });
+    logAudit(user.id, `quote_${decision}`, "quote", quoteId);
     fetchAll();
+  };
+
+  const assignScaffolder = async () => {
+    if (!selectedScaffolder || !id || !user) return;
+    const { error } = await supabase.from("job_assignments").insert({
+      job_id: id, scaffolder_id: selectedScaffolder, assigned_by: user.id,
+    });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Scaffolder assigned" });
+      logAudit(user.id, "scaffolder_assigned", "assignment", id, { scaffolder_id: selectedScaffolder });
+      setAssignOpen(false);
+      setSelectedScaffolder("");
+      fetchAll();
+    }
   };
 
   if (loading) return <div className="p-8 text-muted-foreground">Loading...</div>;
   if (!job) return <div className="p-8 text-muted-foreground">Job not found</div>;
 
   const available = transitions[job.status] || [];
+  const assignedIds = assignments.map((a) => a.scaffolder_id);
+  const unassignedScaffolders = scaffolders.filter((s) => !assignedIds.includes(s.user_id));
 
   return (
     <div className="p-4 lg:p-8 space-y-4 max-w-3xl mx-auto">
       <Button variant="ghost" size="sm" onClick={() => navigate("/jobs")}>
-        <ArrowLeft className="h-4 w-4 mr-1" /> Back to Jobs
+        <ArrowLeft className="h-4 w-4 mr-1" /> Back
       </Button>
 
       {/* Job Info */}
@@ -209,29 +215,55 @@ export default function JobDetail() {
             )}
           </div>
 
-          {/* Status transitions (admin only) */}
-          {role === "admin" && available.length > 0 && (
+          {/* Assigned scaffolders */}
+          {assignments.length > 0 && (
             <div className="pt-3 border-t border-border">
-              <p className="text-xs text-muted-foreground mb-2">Update Status</p>
-              <div className="flex flex-wrap gap-2">
-                {available.map((s) => (
-                  <Button key={s} variant="outline" size="sm" className="text-xs" onClick={() => updateStatus(s)}>
-                    {statusMap[s] || s}
-                  </Button>
-                ))}
+              <p className="text-xs text-muted-foreground mb-2">Assigned Scaffolders</p>
+              <div className="flex flex-wrap gap-1">
+                {assignments.map((a) => {
+                  const s = scaffolders.find((sc) => sc.user_id === a.scaffolder_id);
+                  return (
+                    <Badge key={a.id} variant="secondary" className="text-xs">
+                      <HardHat className="h-3 w-3 mr-1" />
+                      {s ? `${s.first_name} ${s.last_name}` : "Unknown"}
+                    </Badge>
+                  );
+                })}
               </div>
+            </div>
+          )}
+
+          {/* Status transitions + assign (admin) */}
+          {role === "admin" && (
+            <div className="pt-3 border-t border-border space-y-3">
+              {available.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Update Status</p>
+                  <div className="flex flex-wrap gap-2">
+                    {available.map((s) => (
+                      <Button key={s} variant="outline" size="sm" className="text-xs" onClick={() => updateStatus(s)}>
+                        {statusMap[s] || s}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {unassignedScaffolders.length > 0 && (
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => setAssignOpen(true)}>
+                  <UserPlus className="h-3 w-3 mr-1" /> Assign Scaffolder
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Photos Section */}
+      {/* Photos */}
       <Card className="card-elevated">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <Camera className="h-4 w-4" /> Photos
-              <span className="text-xs font-normal text-muted-foreground">({photos.length})</span>
+              <Camera className="h-4 w-4" /> Photos <span className="text-xs font-normal text-muted-foreground">({photos.length})</span>
             </CardTitle>
             {(role === "owner" || role === "scaffolder" || role === "admin") && (
               <label className="cursor-pointer">
@@ -257,9 +289,7 @@ export default function JobDetail() {
                       photo.review_status === "approved" && "bg-success/90 text-white",
                       photo.review_status === "rejected" && "bg-destructive/90 text-white",
                       photo.review_status === "pending" && "bg-warning/90 text-white",
-                    )}>
-                      {photo.review_status}
-                    </span>
+                    )}>{photo.review_status}</span>
                   </div>
                   {role === "admin" && photo.review_status === "pending" && (
                     <div className="absolute bottom-0 inset-x-0 bg-black/60 flex items-center justify-center gap-1 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -278,13 +308,12 @@ export default function JobDetail() {
         </CardContent>
       </Card>
 
-      {/* Quotes Section */}
+      {/* Quotes */}
       <Card className="card-elevated">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-4 w-4" /> Quotes
-              <span className="text-xs font-normal text-muted-foreground">({quotes.length})</span>
+              <FileText className="h-4 w-4" /> Quotes <span className="text-xs font-normal text-muted-foreground">({quotes.length})</span>
             </CardTitle>
             {role === "scaffolder" && (
               <Button size="sm" variant="outline" className="text-xs" onClick={() => setQuoteOpen(true)}>
@@ -311,9 +340,7 @@ export default function JobDetail() {
                         q.review_decision === "accepted" && "bg-success/10 text-success",
                         q.review_decision === "rejected" && "bg-destructive/10 text-destructive",
                         q.review_decision === "countered" && "bg-warning/10 text-warning",
-                      )}>
-                        {q.review_decision}
-                      </span>
+                      )}>{q.review_decision}</span>
                     ) : (
                       <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">Pending</span>
                     )}
@@ -322,18 +349,11 @@ export default function JobDetail() {
                   <p className="text-[10px] text-muted-foreground">
                     {new Date(q.submitted_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                   </p>
-                  {/* Review actions for owner/admin */}
                   {(role === "owner" || role === "admin") && !q.review_decision && (
                     <div className="flex gap-2 pt-1">
-                      <Button size="sm" variant="outline" className="text-xs h-7 text-success border-success/30" onClick={() => reviewQuote(q.id, "accepted")}>
-                        Accept
-                      </Button>
-                      <Button size="sm" variant="outline" className="text-xs h-7 text-destructive border-destructive/30" onClick={() => reviewQuote(q.id, "rejected")}>
-                        Reject
-                      </Button>
-                      <Button size="sm" variant="outline" className="text-xs h-7 text-warning border-warning/30" onClick={() => reviewQuote(q.id, "countered")}>
-                        Counter
-                      </Button>
+                      <Button size="sm" variant="outline" className="text-xs h-7 text-success border-success/30" onClick={() => reviewQuote(q.id, "accepted")}>Accept</Button>
+                      <Button size="sm" variant="outline" className="text-xs h-7 text-destructive border-destructive/30" onClick={() => reviewQuote(q.id, "rejected")}>Reject</Button>
+                      <Button size="sm" variant="outline" className="text-xs h-7 text-warning border-warning/30" onClick={() => reviewQuote(q.id, "countered")}>Counter</Button>
                     </div>
                   )}
                 </div>
@@ -346,9 +366,7 @@ export default function JobDetail() {
       {/* Submit Quote Dialog */}
       <Dialog open={quoteOpen} onOpenChange={setQuoteOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Submit a Quote</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Submit a Quote</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Amount (£)</Label>
@@ -356,10 +374,32 @@ export default function JobDetail() {
             </div>
             <div className="space-y-2">
               <Label>Notes</Label>
-              <Textarea placeholder="Include details about timeline, materials, etc." value={quoteNotes} onChange={(e) => setQuoteNotes(e.target.value)} rows={3} />
+              <Textarea placeholder="Timeline, materials, etc." value={quoteNotes} onChange={(e) => setQuoteNotes(e.target.value)} rows={3} />
             </div>
             <Button className="w-full" disabled={submittingQuote || !quoteAmount} onClick={submitQuote}>
               {submittingQuote ? "Submitting…" : "Submit Quote"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Scaffolder Dialog */}
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Assign Scaffolder</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <Select value={selectedScaffolder} onValueChange={setSelectedScaffolder}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select scaffolder" />
+              </SelectTrigger>
+              <SelectContent>
+                {unassignedScaffolders.map((s) => (
+                  <SelectItem key={s.user_id} value={s.user_id}>{s.first_name} {s.last_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button className="w-full" disabled={!selectedScaffolder} onClick={assignScaffolder}>
+              Assign
             </Button>
           </div>
         </DialogContent>
