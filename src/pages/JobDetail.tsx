@@ -452,6 +452,9 @@ export default function JobDetail() {
         </Card>
       </Collapsible>
 
+      {/* Discussion / Chat */}
+      <JobComments jobId={id!} />
+
       {/* Submit Quote Dialog */}
       <Dialog open={quoteOpen} onOpenChange={setQuoteOpen}>
         <DialogContent className="sm:max-w-md">
