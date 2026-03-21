@@ -91,6 +91,7 @@ export type Database = {
       }
       job_comments: {
         Row: {
+          channel: string
           created_at: string
           id: string
           job_id: string
@@ -98,6 +99,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          channel?: string
           created_at?: string
           id?: string
           job_id: string
@@ -105,6 +107,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          channel?: string
           created_at?: string
           id?: string
           job_id?: string
@@ -128,6 +131,7 @@ export type Database = {
           completion_notes: string | null
           created_at: string
           description: string | null
+          final_price: number | null
           id: string
           lat: number | null
           lng: number | null
@@ -135,6 +139,7 @@ export type Database = {
           region_id: string | null
           scheduled_date: string | null
           scheduled_duration: number | null
+          service_type: string | null
           status: Database["public"]["Enums"]["job_status"]
           title: string
           updated_at: string
@@ -145,6 +150,7 @@ export type Database = {
           completion_notes?: string | null
           created_at?: string
           description?: string | null
+          final_price?: number | null
           id?: string
           lat?: number | null
           lng?: number | null
@@ -152,6 +158,7 @@ export type Database = {
           region_id?: string | null
           scheduled_date?: string | null
           scheduled_duration?: number | null
+          service_type?: string | null
           status?: Database["public"]["Enums"]["job_status"]
           title: string
           updated_at?: string
@@ -162,6 +169,7 @@ export type Database = {
           completion_notes?: string | null
           created_at?: string
           description?: string | null
+          final_price?: number | null
           id?: string
           lat?: number | null
           lng?: number | null
@@ -169,6 +177,7 @@ export type Database = {
           region_id?: string | null
           scheduled_date?: string | null
           scheduled_duration?: number | null
+          service_type?: string | null
           status?: Database["public"]["Enums"]["job_status"]
           title?: string
           updated_at?: string
