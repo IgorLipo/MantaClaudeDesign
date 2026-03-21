@@ -20,6 +20,7 @@ const typeIcons: Record<string, typeof Bell> = {
   submission_confirmed: FileText,
   job_update: FileText,
   chat_message: MessageSquare,
+  site_report: ClipboardList,
   system: Settings,
 };
 
