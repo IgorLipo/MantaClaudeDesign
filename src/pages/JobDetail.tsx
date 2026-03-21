@@ -10,13 +10,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   ArrowLeft, MapPin, Calendar, Camera, FileText, Upload,
   CheckCircle2, XCircle, DollarSign, Send, UserPlus, HardHat,
+  ClipboardList, ChevronDown, ImagePlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { logAudit } from "@/hooks/useAuditLog";
+import { SchedulingPanel } from "@/components/jobs/SchedulingPanel";
+import { GuidedPhotoUpload } from "@/components/jobs/GuidedPhotoUpload";
+import {
+  notifyStatusChange, notifyQuoteSubmitted, notifyQuoteDecision,
+  notifyPhotoUploaded, notifyScaffolderAssigned,
+} from "@/hooks/useNotificationTriggers";
 
 const statusMap: Record<string, string> = {
   draft: "Draft", submitted: "Submitted", photo_review: "Photo Review",
@@ -47,11 +55,9 @@ interface Quote {
   id: string; amount: number; notes: string; submitted_at: string;
   review_decision: string | null; scaffolder_id: string; reviewed_by: string | null;
 }
-
 interface Photo {
   id: string; url: string; review_status: string; created_at: string; uploader_id: string | null;
 }
-
 interface Scaffolder {
   user_id: string; first_name: string; last_name: string;
 }
@@ -66,6 +72,7 @@ export default function JobDetail() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [scaffolders, setScaffolders] = useState<Scaffolder[]>([]);
+  const [adminIds, setAdminIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [quoteOpen, setQuoteOpen] = useState(false);
@@ -74,6 +81,9 @@ export default function JobDetail() {
   const [submittingQuote, setSubmittingQuote] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [selectedScaffolder, setSelectedScaffolder] = useState("");
+  const [guidedUploadOpen, setGuidedUploadOpen] = useState(false);
+  const [photosOpen, setPhotosOpen] = useState(true);
+  const [quotesOpen, setQuotesOpen] = useState(true);
 
   const fetchAll = useCallback(async () => {
     if (!id) return;
@@ -88,12 +98,16 @@ export default function JobDetail() {
     if (photosRes.data) setPhotos(photosRes.data as Photo[]);
     if (assignRes.data) setAssignments(assignRes.data);
 
-    // Fetch scaffolders for assignment
-    const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "scaffolder");
-    if (roles && roles.length > 0) {
-      const { data: profiles } = await supabase.from("profiles").select("user_id, first_name, last_name").in("user_id", roles.map((r) => r.user_id));
+    // Fetch scaffolders + admin IDs
+    const [rolesRes, adminRolesRes] = await Promise.all([
+      supabase.from("user_roles").select("user_id").eq("role", "scaffolder"),
+      supabase.from("user_roles").select("user_id").eq("role", "admin"),
+    ]);
+    if (rolesRes.data && rolesRes.data.length > 0) {
+      const { data: profiles } = await supabase.from("profiles").select("user_id, first_name, last_name").in("user_id", rolesRes.data.map((r) => r.user_id));
       if (profiles) setScaffolders(profiles);
     }
+    if (adminRolesRes.data) setAdminIds(adminRolesRes.data.map((r) => r.user_id));
     setLoading(false);
   }, [id]);
 
@@ -108,6 +122,8 @@ export default function JobDetail() {
       setJob({ ...job, status: newStatus });
       toast({ title: `Status → ${statusMap[newStatus]}` });
       logAudit(user?.id, "status_change", "job", id, { from: oldStatus, to: newStatus });
+      const assignedIds = assignments.map((a) => a.scaffolder_id);
+      notifyStatusChange(id!, job.title, newStatus, job.owner_id, assignedIds);
     }
   };
 
@@ -127,6 +143,7 @@ export default function JobDetail() {
     await supabase.from("photos").insert({ job_id: id, uploader_id: user.id, url: urlData.publicUrl, review_status: "pending" });
     toast({ title: "Photo uploaded" });
     logAudit(user.id, "photo_upload", "photo", id);
+    notifyPhotoUploaded(id, job.title, adminIds);
     setUploading(false);
     fetchAll();
   };
@@ -141,12 +158,14 @@ export default function JobDetail() {
   const submitQuote = async () => {
     if (!user || !id) return;
     setSubmittingQuote(true);
-    const { error } = await supabase.from("quotes").insert({ job_id: id, scaffolder_id: user.id, amount: parseFloat(quoteAmount), notes: quoteNotes });
+    const amount = parseFloat(quoteAmount);
+    const { error } = await supabase.from("quotes").insert({ job_id: id, scaffolder_id: user.id, amount, notes: quoteNotes });
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Quote submitted" });
       logAudit(user.id, "quote_submit", "quote", id, { amount: quoteAmount });
+      notifyQuoteSubmitted(id, job.title, amount, job.owner_id);
       setQuoteOpen(false);
       setQuoteAmount("");
       setQuoteNotes("");
@@ -157,9 +176,11 @@ export default function JobDetail() {
 
   const reviewQuote = async (quoteId: string, decision: "accepted" | "rejected" | "countered") => {
     if (!user) return;
+    const quote = quotes.find((q) => q.id === quoteId);
     await supabase.from("quotes").update({ review_decision: decision, reviewed_by: user.id, reviewed_at: new Date().toISOString() }).eq("id", quoteId);
     toast({ title: `Quote ${decision}` });
     logAudit(user.id, `quote_${decision}`, "quote", quoteId);
+    if (quote) notifyQuoteDecision(quote.scaffolder_id, job.title, decision, id!);
     fetchAll();
   };
 
@@ -173,6 +194,7 @@ export default function JobDetail() {
     } else {
       toast({ title: "Scaffolder assigned" });
       logAudit(user.id, "scaffolder_assigned", "assignment", id, { scaffolder_id: selectedScaffolder });
+      notifyScaffolderAssigned(selectedScaffolder, job.title, id);
       setAssignOpen(false);
       setSelectedScaffolder("");
       fetchAll();
@@ -185,6 +207,8 @@ export default function JobDetail() {
   const available = transitions[job.status] || [];
   const assignedIds = assignments.map((a) => a.scaffolder_id);
   const unassignedScaffolders = scaffolders.filter((s) => !assignedIds.includes(s.user_id));
+  const showScheduling = ["scheduled", "in_progress", "quote_submitted", "negotiating"].includes(job.status) || job.scheduled_date;
+  const showSiteReport = ["in_progress", "completed"].includes(job.status);
 
   return (
     <div className="p-4 lg:p-8 space-y-4 max-w-3xl mx-auto">
@@ -233,7 +257,7 @@ export default function JobDetail() {
             </div>
           )}
 
-          {/* Status transitions + assign (admin) */}
+          {/* Admin actions */}
           {role === "admin" && (
             <div className="pt-3 border-t border-border space-y-3">
               {available.length > 0 && (
@@ -248,120 +272,186 @@ export default function JobDetail() {
                   </div>
                 </div>
               )}
-              {unassignedScaffolders.length > 0 && (
-                <Button size="sm" variant="outline" className="text-xs" onClick={() => setAssignOpen(true)}>
-                  <UserPlus className="h-3 w-3 mr-1" /> Assign Scaffolder
-                </Button>
-              )}
+              <div className="flex flex-wrap gap-2">
+                {unassignedScaffolders.length > 0 && (
+                  <Button size="sm" variant="outline" className="text-xs" onClick={() => setAssignOpen(true)}>
+                    <UserPlus className="h-3 w-3 mr-1" /> Assign Scaffolder
+                  </Button>
+                )}
+                {showSiteReport && (
+                  <Button size="sm" variant="outline" className="text-xs" onClick={() => navigate(`/jobs/${id}/report`)}>
+                    <ClipboardList className="h-3 w-3 mr-1" /> Site Report
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Engineer: site report link */}
+          {role === "engineer" && showSiteReport && (
+            <div className="pt-3 border-t border-border">
+              <Button size="sm" onClick={() => navigate(`/jobs/${id}/report`)}>
+                <ClipboardList className="h-4 w-4 mr-1" /> Complete Site Report
+              </Button>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Scheduling Panel */}
+      {showScheduling && (
+        <SchedulingPanel job={job} role={role} onUpdate={fetchAll} />
+      )}
+
+      {/* Guided Photo Upload for Owners */}
+      {role === "owner" && ["draft", "submitted", "photo_review"].includes(job.status) && (
+        <Card className="card-elevated border-primary/20">
+          <CardContent className="p-4">
+            {guidedUploadOpen ? (
+              <GuidedPhotoUpload
+                jobId={id!}
+                onComplete={() => {
+                  setGuidedUploadOpen(false);
+                  fetchAll();
+                  toast({ title: "Photos submitted for review" });
+                }}
+              />
+            ) : (
+              <div className="text-center py-4">
+                <ImagePlus className="h-8 w-8 text-primary mx-auto mb-2" />
+                <p className="text-sm font-medium text-foreground">Submit Property Photos</p>
+                <p className="text-xs text-muted-foreground mt-1">We'll guide you through each required photo step-by-step</p>
+                <Button size="sm" className="mt-3" onClick={() => setGuidedUploadOpen(true)}>
+                  <Camera className="h-4 w-4 mr-1" /> Start Photo Submission
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Photos */}
-      <Card className="card-elevated">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Camera className="h-4 w-4" /> Photos <span className="text-xs font-normal text-muted-foreground">({photos.length})</span>
-            </CardTitle>
-            {(role === "owner" || role === "scaffolder" || role === "admin") && (
-              <label className="cursor-pointer">
-                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
-                <Button size="sm" variant="outline" className="text-xs pointer-events-none" asChild>
-                  <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload"}</span>
-                </Button>
-              </label>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {photos.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">No photos yet</p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {photos.map((photo) => (
-                <div key={photo.id} className="relative group rounded-xl overflow-hidden border border-border">
-                  <img src={photo.url} alt="Site photo" className="w-full h-32 object-cover" />
-                  <div className="absolute top-1.5 right-1.5">
-                    <span className={cn(
-                      "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
-                      photo.review_status === "approved" && "bg-success/90 text-white",
-                      photo.review_status === "rejected" && "bg-destructive/90 text-white",
-                      photo.review_status === "pending" && "bg-warning/90 text-white",
-                    )}>{photo.review_status}</span>
-                  </div>
-                  {role === "admin" && photo.review_status === "pending" && (
-                    <div className="absolute bottom-0 inset-x-0 bg-black/60 flex items-center justify-center gap-1 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button size="sm" variant="ghost" className="h-7 text-white hover:text-success hover:bg-transparent text-xs" onClick={() => reviewPhoto(photo.id, "approved")}>
-                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Approve
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-7 text-white hover:text-destructive hover:bg-transparent text-xs" onClick={() => reviewPhoto(photo.id, "rejected")}>
-                        <XCircle className="h-3.5 w-3.5 mr-1" /> Reject
-                      </Button>
-                    </div>
-                  )}
+      <Collapsible open={photosOpen} onOpenChange={setPhotosOpen}>
+        <Card className="card-elevated">
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-3 cursor-pointer hover:bg-secondary/30 transition-colors rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Camera className="h-4 w-4" /> Photos <span className="text-xs font-normal text-muted-foreground">({photos.length})</span>
+                </CardTitle>
+                <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", photosOpen && "rotate-180")} />
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent>
+              {(role === "admin" || role === "scaffolder") && (
+                <div className="mb-3">
+                  <label className="cursor-pointer">
+                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
+                    <Button size="sm" variant="outline" className="text-xs pointer-events-none" asChild>
+                      <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Photo"}</span>
+                    </Button>
+                  </label>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              )}
+              {photos.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">No photos yet</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {photos.map((photo) => (
+                    <div key={photo.id} className="relative group rounded-xl overflow-hidden border border-border">
+                      <img src={photo.url} alt="Site photo" className="w-full h-32 object-cover" />
+                      <div className="absolute top-1.5 right-1.5">
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                          photo.review_status === "approved" && "bg-success/90 text-white",
+                          photo.review_status === "rejected" && "bg-destructive/90 text-white",
+                          photo.review_status === "pending" && "bg-warning/90 text-white",
+                        )}>{photo.review_status}</span>
+                      </div>
+                      {role === "admin" && photo.review_status === "pending" && (
+                        <div className="absolute bottom-0 inset-x-0 bg-black/60 flex items-center justify-center gap-1 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button size="sm" variant="ghost" className="h-7 text-white hover:text-success hover:bg-transparent text-xs" onClick={() => reviewPhoto(photo.id, "approved")}>
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Approve
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-white hover:text-destructive hover:bg-transparent text-xs" onClick={() => reviewPhoto(photo.id, "rejected")}>
+                            <XCircle className="h-3.5 w-3.5 mr-1" /> Reject
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Quotes */}
-      <Card className="card-elevated">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-4 w-4" /> Quotes <span className="text-xs font-normal text-muted-foreground">({quotes.length})</span>
-            </CardTitle>
-            {role === "scaffolder" && (
-              <Button size="sm" variant="outline" className="text-xs" onClick={() => setQuoteOpen(true)}>
-                <Send className="h-3 w-3 mr-1" /> Submit Quote
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {quotes.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">No quotes submitted</p>
-          ) : (
-            <div className="space-y-3">
-              {quotes.map((q) => (
-                <div key={q.id} className="p-3 rounded-xl border border-border bg-secondary/30 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-semibold tabular-nums">£{Number(q.amount).toLocaleString()}</span>
-                    </div>
-                    {q.review_decision ? (
-                      <span className={cn(
-                        "text-[10px] px-2 py-0.5 rounded-full font-medium capitalize",
-                        q.review_decision === "accepted" && "bg-success/10 text-success",
-                        q.review_decision === "rejected" && "bg-destructive/10 text-destructive",
-                        q.review_decision === "countered" && "bg-warning/10 text-warning",
-                      )}>{q.review_decision}</span>
-                    ) : (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">Pending</span>
-                    )}
-                  </div>
-                  {q.notes && <p className="text-xs text-muted-foreground">{q.notes}</p>}
-                  <p className="text-[10px] text-muted-foreground">
-                    {new Date(q.submitted_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                  </p>
-                  {(role === "owner" || role === "admin") && !q.review_decision && (
-                    <div className="flex gap-2 pt-1">
-                      <Button size="sm" variant="outline" className="text-xs h-7 text-success border-success/30" onClick={() => reviewQuote(q.id, "accepted")}>Accept</Button>
-                      <Button size="sm" variant="outline" className="text-xs h-7 text-destructive border-destructive/30" onClick={() => reviewQuote(q.id, "rejected")}>Reject</Button>
-                      <Button size="sm" variant="outline" className="text-xs h-7 text-warning border-warning/30" onClick={() => reviewQuote(q.id, "countered")}>Counter</Button>
-                    </div>
-                  )}
+      <Collapsible open={quotesOpen} onOpenChange={setQuotesOpen}>
+        <Card className="card-elevated">
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-3 cursor-pointer hover:bg-secondary/30 transition-colors rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="h-4 w-4" /> Quotes <span className="text-xs font-normal text-muted-foreground">({quotes.length})</span>
+                </CardTitle>
+                <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", quotesOpen && "rotate-180")} />
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent>
+              {role === "scaffolder" && (
+                <div className="mb-3">
+                  <Button size="sm" variant="outline" className="text-xs" onClick={() => setQuoteOpen(true)}>
+                    <Send className="h-3 w-3 mr-1" /> Submit Quote
+                  </Button>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              )}
+              {quotes.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">No quotes submitted</p>
+              ) : (
+                <div className="space-y-3">
+                  {quotes.map((q) => (
+                    <div key={q.id} className="p-3 rounded-xl border border-border bg-secondary/30 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-primary" />
+                          <span className="text-sm font-semibold tabular-nums">£{Number(q.amount).toLocaleString()}</span>
+                        </div>
+                        {q.review_decision ? (
+                          <span className={cn(
+                            "text-[10px] px-2 py-0.5 rounded-full font-medium capitalize",
+                            q.review_decision === "accepted" && "bg-success/10 text-success",
+                            q.review_decision === "rejected" && "bg-destructive/10 text-destructive",
+                            q.review_decision === "countered" && "bg-warning/10 text-warning",
+                          )}>{q.review_decision}</span>
+                        ) : (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">Pending</span>
+                        )}
+                      </div>
+                      {q.notes && <p className="text-xs text-muted-foreground">{q.notes}</p>}
+                      <p className="text-[10px] text-muted-foreground">
+                        {new Date(q.submitted_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                      </p>
+                      {(role === "owner" || role === "admin") && !q.review_decision && (
+                        <div className="flex gap-2 pt-1">
+                          <Button size="sm" variant="outline" className="text-xs h-7 text-success border-success/30" onClick={() => reviewQuote(q.id, "accepted")}>Accept</Button>
+                          <Button size="sm" variant="outline" className="text-xs h-7 text-destructive border-destructive/30" onClick={() => reviewQuote(q.id, "rejected")}>Reject</Button>
+                          <Button size="sm" variant="outline" className="text-xs h-7 text-warning border-warning/30" onClick={() => reviewQuote(q.id, "countered")}>Counter</Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Submit Quote Dialog */}
       <Dialog open={quoteOpen} onOpenChange={setQuoteOpen}>
@@ -374,7 +464,7 @@ export default function JobDetail() {
             </div>
             <div className="space-y-2">
               <Label>Notes</Label>
-              <Textarea placeholder="Timeline, materials, etc." value={quoteNotes} onChange={(e) => setQuoteNotes(e.target.value)} rows={3} />
+              <Textarea placeholder="Timeline, materials, exclusions..." value={quoteNotes} onChange={(e) => setQuoteNotes(e.target.value)} rows={3} />
             </div>
             <Button className="w-full" disabled={submittingQuote || !quoteAmount} onClick={submitQuote}>
               {submittingQuote ? "Submitting…" : "Submit Quote"}
