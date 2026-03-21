@@ -150,6 +150,21 @@ export default function JobDetail() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  // Open sections based on URL hash
+  useEffect(() => {
+    const hash = location.hash;
+    if (hash === "#photos") setPhotosOpen(true);
+    if (hash === "#quotes") setQuotesOpen(true);
+    if (hash === "#chat") { /* chat is always visible */ }
+  }, [location.hash]);
+
+  // Show submission banner if owner and job is submitted/photo_review
+  useEffect(() => {
+    if (job && role === "owner" && ["submitted", "photo_review"].includes(job.status)) {
+      setSubmissionConfirmed(true);
+    }
+  }, [job?.status, role]);
+
   const updateStatus = async (newStatus: string) => {
     const oldStatus = job.status;
     const { error } = await supabase.from("jobs").update({ status: newStatus as any, updated_at: new Date().toISOString() }).eq("id", id);
