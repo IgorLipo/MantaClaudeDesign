@@ -327,6 +327,35 @@ export type Database = {
         }
         Relationships: []
       }
+      scaffolder_regions: {
+        Row: {
+          assigned_at: string
+          id: string
+          region_id: string
+          scaffolder_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          id?: string
+          region_id: string
+          scaffolder_id: string
+        }
+        Update: {
+          assigned_at?: string
+          id?: string
+          region_id?: string
+          scaffolder_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scaffolder_regions_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
