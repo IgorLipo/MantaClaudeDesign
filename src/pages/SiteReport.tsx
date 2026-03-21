@@ -146,15 +146,15 @@ export default function SiteReport() {
     if (!jobId || !user) return;
     setSaving(true);
     if (reportId) {
-      await supabase.from("site_reports").update({
-        report_data: reportData as any,
+      await (supabase as any).from("site_reports").update({
+        report_data: reportData,
         updated_at: new Date().toISOString(),
       }).eq("id", reportId);
     } else {
-      const { data } = await supabase.from("site_reports").insert({
+      const { data } = await (supabase as any).from("site_reports").insert({
         job_id: jobId,
         engineer_id: user.id,
-        report_data: reportData as any,
+        report_data: reportData,
       }).select("id").single();
       if (data) setReportId(data.id);
     }
