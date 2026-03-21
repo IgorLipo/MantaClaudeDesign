@@ -13,6 +13,7 @@ import { logAudit } from "@/hooks/useAuditLog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import { notify } from "@/hooks/useNotificationTriggers";
 
 interface SchedulingPanelProps {
   job: any;
@@ -25,18 +26,11 @@ function generateICS(job: any): string {
   const end = new Date(start.getTime() + (job.scheduled_duration || 4) * 3600000);
   const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   return [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//SolarScaffoldPro//EN",
-    "BEGIN:VEVENT",
-    `DTSTART:${fmt(start)}`,
-    `DTEND:${fmt(end)}`,
-    `SUMMARY:${job.title}`,
-    `LOCATION:${job.address}`,
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//SolarScaffoldPro//EN",
+    "BEGIN:VEVENT", `DTSTART:${fmt(start)}`, `DTEND:${fmt(end)}`,
+    `SUMMARY:${job.title}`, `LOCATION:${job.address}`,
     `DESCRIPTION:Solar Scaffold Pro job — ${job.description || "No description"}`,
-    `UID:${job.id}@solarscaffoldpro`,
-    "END:VEVENT",
-    "END:VCALENDAR",
+    `UID:${job.id}@solarscaffoldpro`, "END:VEVENT", "END:VCALENDAR",
   ].join("\r\n");
 }
 
@@ -65,13 +59,24 @@ export function SchedulingPanel({ job, role, onUpdate }: SchedulingPanelProps) {
       logAudit(user.id, "schedule_set", "job", job.id, { date: date.toISOString(), duration });
       // Notify owner
       if (job.owner_id) {
-        await supabase.from("notifications").insert({
-          user_id: job.owner_id,
-          type: "scheduling",
+        await notify({
+          userId: job.owner_id, type: "scheduling",
           title: "Job Scheduled",
           message: `Your job "${job.title}" has been scheduled for ${format(date, "dd MMM yyyy")}. Please confirm or request a change.`,
           data: { job_id: job.id },
         });
+      }
+      // Notify assigned scaffolders
+      const { data: assigns } = await supabase.from("job_assignments").select("scaffolder_id").eq("job_id", job.id).eq("assignment_role", "scaffolder");
+      if (assigns) {
+        for (const a of assigns) {
+          await notify({
+            userId: a.scaffolder_id, type: "scheduling",
+            title: "Job Scheduled",
+            message: `Job "${job.title}" has been scheduled for ${format(date, "dd MMM yyyy")}.`,
+            data: { job_id: job.id },
+          });
+        }
       }
       onUpdate();
     }
@@ -88,14 +93,24 @@ export function SchedulingPanel({ job, role, onUpdate }: SchedulingPanelProps) {
     }).eq("id", job.id);
     toast({ title: response === "confirmed" ? "Schedule confirmed" : "Change requested" });
     logAudit(user.id, `schedule_${response}`, "job", job.id, { notes: responseNotes });
-    // Notify admin
-    await supabase.from("notifications").insert({
-      user_id: job.owner_id, // This would ideally go to admin; simplified
-      type: "scheduling",
-      title: response === "confirmed" ? "Schedule Confirmed" : "Schedule Change Requested",
-      message: `Owner ${response === "confirmed" ? "confirmed" : "requested a change for"} job "${job.title}".${responseNotes ? ` Notes: ${responseNotes}` : ""}`,
-      data: { job_id: job.id },
-    });
+
+    const label = response === "confirmed" ? "Schedule Confirmed" : "Schedule Change Requested";
+    const msg = `Owner ${response === "confirmed" ? "confirmed" : "requested a change for"} job "${job.title}".${responseNotes ? ` Notes: ${responseNotes}` : ""}`;
+
+    // Notify all admins
+    const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
+    if (adminRoles) {
+      for (const ar of adminRoles) {
+        await notify({ userId: ar.user_id, type: "scheduling", title: label, message: msg, data: { job_id: job.id } });
+      }
+    }
+    // Notify assigned scaffolders
+    const { data: assigns } = await supabase.from("job_assignments").select("scaffolder_id").eq("job_id", job.id).eq("assignment_role", "scaffolder");
+    if (assigns) {
+      for (const a of assigns) {
+        await notify({ userId: a.scaffolder_id, type: "scheduling", title: label, message: msg, data: { job_id: job.id } });
+      }
+    }
     onUpdate();
   };
 
@@ -119,7 +134,6 @@ export function SchedulingPanel({ job, role, onUpdate }: SchedulingPanelProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Current schedule display */}
         {job.scheduled_date && (
           <div className="bg-secondary/50 rounded-xl p-3 space-y-2">
             <div className="flex items-center justify-between">
@@ -131,8 +145,6 @@ export function SchedulingPanel({ job, role, onUpdate }: SchedulingPanelProps) {
                 <Clock className="h-3.5 w-3.5" /> {job.scheduled_duration || 4}h
               </div>
             </div>
-
-            {/* Confirmation status */}
             {job.schedule_response === "confirmed" ? (
               <div className="flex items-center gap-1.5 text-xs text-success">
                 <CheckCircle2 className="h-3.5 w-3.5" /> Owner confirmed
@@ -145,15 +157,12 @@ export function SchedulingPanel({ job, role, onUpdate }: SchedulingPanelProps) {
             ) : (
               <div className="text-xs text-muted-foreground">Awaiting owner confirmation</div>
             )}
-
-            {/* ICS download */}
             <Button size="sm" variant="outline" className="w-full text-xs" onClick={downloadICS}>
               <Download className="h-3 w-3 mr-1" /> Download Calendar (.ics)
             </Button>
           </div>
         )}
 
-        {/* Admin: set schedule */}
         {role === "admin" && (
           <div className="space-y-3 pt-2 border-t border-border">
             <p className="text-xs text-muted-foreground">{job.scheduled_date ? "Update schedule" : "Set schedule"}</p>
@@ -178,7 +187,6 @@ export function SchedulingPanel({ job, role, onUpdate }: SchedulingPanelProps) {
           </div>
         )}
 
-        {/* Owner: confirm or request change */}
         {role === "owner" && job.scheduled_date && !job.schedule_confirmed && job.schedule_response !== "change_requested" && (
           <div className="space-y-3 pt-2 border-t border-border">
             <p className="text-xs text-muted-foreground">Confirm this date works for you</p>
