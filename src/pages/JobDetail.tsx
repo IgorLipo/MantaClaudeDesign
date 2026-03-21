@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { logAudit } from "@/hooks/useAuditLog";
 import { SchedulingPanel } from "@/components/jobs/SchedulingPanel";
 import { GuidedPhotoUpload } from "@/components/jobs/GuidedPhotoUpload";
+import { JobComments } from "@/components/jobs/JobComments";
 import {
   notifyStatusChange, notifyQuoteSubmitted, notifyQuoteDecision,
   notifyPhotoUploaded, notifyScaffolderAssigned,
@@ -345,16 +346,14 @@ export default function JobDetail() {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent>
-              {(role === "admin" || role === "scaffolder") && (
-                <div className="mb-3">
-                  <label className="cursor-pointer">
-                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
-                    <Button size="sm" variant="outline" className="text-xs pointer-events-none" asChild>
-                      <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Photo"}</span>
-                    </Button>
-                  </label>
-                </div>
-              )}
+              <div className="mb-3">
+                <label className="cursor-pointer">
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
+                  <Button size="sm" variant="outline" className="text-xs pointer-events-none" asChild>
+                    <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Photo"}</span>
+                  </Button>
+                </label>
+              </div>
               {photos.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">No photos yet</p>
               ) : (
@@ -452,6 +451,9 @@ export default function JobDetail() {
           </CollapsibleContent>
         </Card>
       </Collapsible>
+
+      {/* Discussion / Chat */}
+      <JobComments jobId={id!} />
 
       {/* Submit Quote Dialog */}
       <Dialog open={quoteOpen} onOpenChange={setQuoteOpen}>
