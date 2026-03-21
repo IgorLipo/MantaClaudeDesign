@@ -57,7 +57,7 @@ export function SchedulingPanel({ job, role, onUpdate }: SchedulingPanelProps) {
       schedule_confirmed: false,
       schedule_response: null,
       updated_at: new Date().toISOString(),
-    } as any).eq("id", job.id);
+    }).eq("id", job.id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
