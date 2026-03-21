@@ -33,14 +33,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: jobs } = await supabase.from("jobs").select("id, title, status, address, created_at").order("created_at", { ascending: false }).limit(10);
-      if (jobs) {
-        setRecentJobs(jobs);
-        const pending = jobs.filter((j) => ["draft", "submitted", "photo_review", "quote_pending", "quote_submitted", "negotiating"].includes(j.status)).length;
-        const inProgress = jobs.filter((j) => ["scheduled", "in_progress"].includes(j.status)).length;
-        const completed = jobs.filter((j) => j.status === "completed").length;
-        setCounts({ total: jobs.length, pending, inProgress, completed });
+      // Get all jobs for counts
+      const { data: allJobs } = await supabase.from("jobs").select("id, status");
+      // Get recent 10 for display
+      const { data: recent } = await supabase.from("jobs").select("id, title, status, address, created_at").order("created_at", { ascending: false }).limit(10);
+      if (allJobs) {
+        const pending = allJobs.filter((j) => ["draft", "submitted", "photo_review", "quote_pending", "quote_submitted", "negotiating"].includes(j.status)).length;
+        const inProgress = allJobs.filter((j) => ["scheduled", "in_progress"].includes(j.status)).length;
+        const completed = allJobs.filter((j) => j.status === "completed").length;
+        setCounts({ total: allJobs.length, pending, inProgress, completed });
       }
+      if (recent) setRecentJobs(recent);
       setLoading(false);
     };
     fetchData();

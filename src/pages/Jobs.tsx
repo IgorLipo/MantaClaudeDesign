@@ -68,7 +68,7 @@ export default function Jobs() {
       toast({ title: "Job created" });
       setForm({ title: "", description: "", address: "" });
       setCreateOpen(false);
-      fetchJobs();
+      await fetchJobs();
     }
     setSubmitting(false);
   };
