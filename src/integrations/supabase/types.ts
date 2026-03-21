@@ -14,16 +14,369 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_logs: {
+        Row: {
+          action: string
+          changes: Json | null
+          created_at: string
+          entity: string
+          entity_id: string | null
+          id: string
+          ip: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          changes?: Json | null
+          created_at?: string
+          entity: string
+          entity_id?: string | null
+          id?: string
+          ip?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          changes?: Json | null
+          created_at?: string
+          entity?: string
+          entity_id?: string | null
+          id?: string
+          ip?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      job_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          id: string
+          job_id: string
+          region_id: string | null
+          scaffolder_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          job_id: string
+          region_id?: string | null
+          scaffolder_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          job_id?: string
+          region_id?: string | null
+          scaffolder_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_assignments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_assignments_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          address: string
+          completion_date: string | null
+          completion_notes: string | null
+          created_at: string
+          description: string | null
+          id: string
+          lat: number | null
+          lng: number | null
+          owner_id: string | null
+          region_id: string | null
+          scheduled_date: string | null
+          scheduled_duration: number | null
+          status: Database["public"]["Enums"]["job_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          completion_date?: string | null
+          completion_notes?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          owner_id?: string | null
+          region_id?: string | null
+          scheduled_date?: string | null
+          scheduled_duration?: number | null
+          status?: Database["public"]["Enums"]["job_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          completion_date?: string | null
+          completion_notes?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          owner_id?: string | null
+          region_id?: string | null
+          scheduled_date?: string | null
+          scheduled_duration?: number | null
+          status?: Database["public"]["Enums"]["job_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          message: string
+          read: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string
+          read?: boolean
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string
+          read?: boolean
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      photos: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          review_status: Database["public"]["Enums"]["review_status"]
+          uploader_id: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id: string
+          review_status?: Database["public"]["Enums"]["review_status"]
+          uploader_id?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          review_status?: Database["public"]["Enums"]["review_status"]
+          uploader_id?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photos_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          first_name: string
+          id: string
+          last_name: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quotes: {
+        Row: {
+          amount: number
+          id: string
+          job_id: string
+          notes: string | null
+          review_decision: Database["public"]["Enums"]["review_decision"] | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          scaffolder_id: string
+          submitted_at: string
+        }
+        Insert: {
+          amount?: number
+          id?: string
+          job_id: string
+          notes?: string | null
+          review_decision?:
+            | Database["public"]["Enums"]["review_decision"]
+            | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          scaffolder_id: string
+          submitted_at?: string
+        }
+        Update: {
+          amount?: number
+          id?: string
+          job_id?: string
+          notes?: string | null
+          review_decision?:
+            | Database["public"]["Enums"]["review_decision"]
+            | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          scaffolder_id?: string
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      regions: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          postcode_prefix: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          postcode_prefix?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          postcode_prefix?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "owner" | "scaffolder" | "engineer"
+      job_status:
+        | "draft"
+        | "submitted"
+        | "photo_review"
+        | "quote_pending"
+        | "quote_submitted"
+        | "negotiating"
+        | "scheduled"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+      review_decision: "accepted" | "rejected" | "countered"
+      review_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +503,22 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "owner", "scaffolder", "engineer"],
+      job_status: [
+        "draft",
+        "submitted",
+        "photo_review",
+        "quote_pending",
+        "quote_submitted",
+        "negotiating",
+        "scheduled",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
+      review_decision: ["accepted", "rejected", "countered"],
+      review_status: ["pending", "approved", "rejected"],
+    },
   },
 } as const
