@@ -64,6 +64,7 @@ export default function NotificationsPage() {
       else if (n.type === "quote" || n.type === "quote_approved") hash = "#quotes";
       else if (n.type === "scheduling") hash = "#scheduling";
       else if (n.type === "chat_message") hash = "#chat";
+      else if (n.type === "site_report") { navigate(`/jobs/${jobId}/report`); return; }
       navigate(`/jobs/${jobId}${hash}`);
     }
   };
