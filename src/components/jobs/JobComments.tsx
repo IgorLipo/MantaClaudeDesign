@@ -4,14 +4,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquare, Send } from "lucide-react";
+import { MessageSquare, Send, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { notify } from "@/hooks/useNotificationTriggers";
 
 interface Comment {
   id: string;
   user_id: string;
   message: string;
   created_at: string;
+  channel: string;
 }
 
 interface Profile {
@@ -20,7 +22,20 @@ interface Profile {
   last_name: string;
 }
 
-export function JobComments({ jobId }: { jobId: string }) {
+const channelLabels: Record<string, string> = {
+  admin_owner: "Owner",
+  admin_scaffolder: "Scaffolder",
+  admin_engineer: "Engineer",
+};
+
+interface JobCommentsProps {
+  jobId: string;
+  channel: string;
+  jobTitle?: string;
+  recipientIds?: string[];
+}
+
+export function JobComments({ jobId, channel, jobTitle, recipientIds }: JobCommentsProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [comments, setComments] = useState<Comment[]>([]);
@@ -34,6 +49,7 @@ export function JobComments({ jobId }: { jobId: string }) {
       .from("job_comments")
       .select("*")
       .eq("job_id", jobId)
+      .eq("channel", channel)
       .order("created_at", { ascending: true });
     if (data) {
       setComments(data as Comment[]);
@@ -54,14 +70,14 @@ export function JobComments({ jobId }: { jobId: string }) {
 
   useEffect(() => {
     fetchComments();
-    const channel = supabase
-      .channel(`job-comments-${jobId}`)
+    const ch = supabase
+      .channel(`job-comments-${jobId}-${channel}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "job_comments", filter: `job_id=eq.${jobId}` }, () => {
         fetchComments();
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [jobId]);
+    return () => { supabase.removeChannel(ch); };
+  }, [jobId, channel]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -71,23 +87,31 @@ export function JobComments({ jobId }: { jobId: string }) {
     if (!message.trim() || !user) return;
     setSending(true);
     const { error } = await supabase.from("job_comments").insert({
-      job_id: jobId,
-      user_id: user.id,
-      message: message.trim(),
-    });
+      job_id: jobId, user_id: user.id, message: message.trim(), channel,
+    } as any);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       setMessage("");
+      // Notify recipients
+      if (recipientIds) {
+        for (const rid of recipientIds) {
+          if (rid !== user.id) {
+            await notify({
+              userId: rid, type: "message",
+              title: "New Message",
+              message: `New message on job "${jobTitle || ""}": "${message.trim().slice(0, 80)}"`,
+              data: { job_id: jobId },
+            });
+          }
+        }
+      }
     }
     setSending(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
   const getName = (userId: string) => {
@@ -101,7 +125,9 @@ export function JobComments({ jobId }: { jobId: string }) {
     <Card className="card-elevated">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <MessageSquare className="h-4 w-4" /> Discussion
+          <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+          <MessageSquare className="h-4 w-4" />
+          <span>Chat — {channelLabels[channel] || channel}</span>
           <span className="text-xs font-normal text-muted-foreground">({comments.length})</span>
         </CardTitle>
       </CardHeader>
