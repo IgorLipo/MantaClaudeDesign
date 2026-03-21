@@ -72,6 +72,7 @@ interface AuditEntry {
 export default function JobDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { role, user } = useAuth();
   const { toast } = useToast();
   const [job, setJob] = useState<any>(null);
