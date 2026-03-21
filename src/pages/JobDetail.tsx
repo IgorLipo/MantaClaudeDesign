@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { logAudit } from "@/hooks/useAuditLog";
 import { SchedulingPanel } from "@/components/jobs/SchedulingPanel";
 import { GuidedPhotoUpload } from "@/components/jobs/GuidedPhotoUpload";
+import { JobComments } from "@/components/jobs/JobComments";
 import {
   notifyStatusChange, notifyQuoteSubmitted, notifyQuoteDecision,
   notifyPhotoUploaded, notifyScaffolderAssigned,
