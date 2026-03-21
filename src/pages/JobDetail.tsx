@@ -27,7 +27,7 @@ import { JobComments } from "@/components/jobs/JobComments";
 import {
   notifyStatusChange, notifyQuoteSubmitted, notifyQuoteDecision,
   notifyPhotoUploaded, notifyScaffolderAssigned, notifyOwnerPhotoSubmitted,
-  notifyOwnerFinalPrice, notifyJobEdited,
+  notifyOwnerFinalPrice, notifyJobEdited, notifyEngineerAssigned,
 } from "@/hooks/useNotificationTriggers";
 
 const statusMap: Record<string, string> = {
