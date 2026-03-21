@@ -121,7 +121,7 @@ export default function SiteReport() {
   useEffect(() => {
     const load = async () => {
       if (!jobId) return;
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("site_reports")
         .select("*")
         .eq("job_id", jobId)
@@ -130,7 +130,7 @@ export default function SiteReport() {
         .maybeSingle();
       if (data) {
         setReportId(data.id);
-        setReportData((data.report_data as Record<string, any>) || {});
+        setReportData(data.report_data || {});
         setReportStatus(data.status);
       }
       setLoading(false);
