@@ -197,14 +197,12 @@ export default function JobDetail() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Fetch maps key for owner static map
+  // Fetch maps key for static map (all roles)
   useEffect(() => {
-    if (role === "owner") {
-      supabase.functions.invoke("get-maps-key").then(({ data }) => {
-        if (data?.key) setMapsKey(data.key);
-      }).catch(() => {});
-    }
-  }, [role]);
+    supabase.functions.invoke("get-maps-key").then(({ data }) => {
+      if (data?.key) setMapsKey(data.key);
+    }).catch(() => {});
+  }, []);
 
   // Realtime: auto-refresh job when status changes (so owner sees updates instantly)
   useEffect(() => {
