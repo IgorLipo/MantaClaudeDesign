@@ -10,6 +10,8 @@ import Dashboard from "./pages/Dashboard";
 import Jobs from "./pages/Jobs";
 import JobDetail from "./pages/JobDetail";
 import SiteReport from "./pages/SiteReport";
+import MyQuotes from "./pages/MyQuotes";
+import MySiteReports from "./pages/MySiteReports";
 import Scaffolders from "./pages/Scaffolders";
 import Regions from "./pages/Regions";
 import NotificationsPage from "./pages/NotificationsPage";
