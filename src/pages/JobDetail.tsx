@@ -197,6 +197,15 @@ export default function JobDetail() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  // Fetch maps key for owner static map
+  useEffect(() => {
+    if (role === "owner") {
+      supabase.functions.invoke("get-maps-key").then(({ data }) => {
+        if (data?.key) setMapsKey(data.key);
+      }).catch(() => {});
+    }
+  }, [role]);
+
   useEffect(() => {
     const hash = location.hash;
     if (hash === "#photos") setPhotosOpen(true);
