@@ -57,16 +57,7 @@ export function SchedulingPanel({ job, role, onUpdate }: SchedulingPanelProps) {
     } else {
       toast({ title: "Schedule set" });
       logAudit(user.id, "schedule_set", "job", job.id, { date: date.toISOString(), duration });
-      // Notify owner
-      if (job.owner_id) {
-        await notify({
-          userId: job.owner_id, type: "scheduling",
-          title: "Job Scheduled",
-          message: `Your job "${job.title}" has been scheduled for ${format(date, "dd MMM yyyy")}. Please confirm or request a change.`,
-          data: { job_id: job.id },
-        });
-      }
-      // Notify assigned scaffolders
+      // Notify assigned scaffolders (not owner — owner is only notified after all parties confirm)
       const { data: assigns } = await (supabase as any).from("job_assignments").select("scaffolder_id").eq("job_id", job.id).eq("assignment_role", "scaffolder");
       if (assigns) {
         for (const a of assigns) {
