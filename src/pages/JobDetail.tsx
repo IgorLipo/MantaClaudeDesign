@@ -628,8 +628,8 @@ export default function JobDetail() {
         </CardContent>
       </Card>
 
-      {/* Scheduling Panel */}
-      {showScheduling && <SchedulingPanel job={job} role={role} onUpdate={fetchAll} />}
+      {/* Scheduling Panel — hidden from owner */}
+      {showScheduling && role !== "owner" && <SchedulingPanel job={job} role={role} onUpdate={fetchAll} />}
 
       {/* Guided Photo Upload for Owners — only if photos haven't been submitted yet */}
       {role === "owner" && ["draft"].includes(job.status) && (
