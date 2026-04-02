@@ -149,6 +149,7 @@ export default function JobDetail() {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [siteReport, setSiteReport] = useState<any>(null);
+  const [mapsKey, setMapsKey] = useState("");
 
   const fetchAll = useCallback(async () => {
     if (!id) return;
