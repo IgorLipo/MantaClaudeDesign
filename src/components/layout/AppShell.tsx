@@ -183,7 +183,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <main
         className={cn(
-          "flex-1 min-h-screen transition-all duration-300",
+          "flex-1 min-h-screen min-w-0 overflow-x-hidden transition-all duration-300",
           "lg:ml-64 pt-14 lg:pt-0",
           !sidebarOpen && "lg:ml-16"
         )}
