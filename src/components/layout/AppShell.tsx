@@ -12,6 +12,7 @@ import {
   X,
   ChevronLeft,
   LogOut,
+  Home,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,8 +26,9 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/jobs", label: "Jobs", icon: Briefcase },
+  { path: "/", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "scaffolder", "engineer"] },
+  { path: "/my-job", label: "My Job", icon: Home, roles: ["owner"] },
+  { path: "/jobs", label: "Jobs", icon: Briefcase, roles: ["admin", "scaffolder", "engineer"] },
   { path: "/my-quotes", label: "My Quotes", icon: ScrollText, roles: ["scaffolder"] },
   { path: "/site-reports", label: "Site Reports", icon: ScrollText, roles: ["engineer"] },
   { path: "/scaffolders", label: "Scaffolders", icon: HardHat, roles: ["admin"] },

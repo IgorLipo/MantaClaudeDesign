@@ -16,7 +16,7 @@ import {
   ArrowLeft, MapPin, Calendar, Camera, FileText, Upload,
   CheckCircle2, XCircle, DollarSign, Send, UserPlus, HardHat,
   ClipboardList, ChevronDown, ImagePlus, Pencil, History,
-  MessageSquare, X,
+  MessageSquare, X, Printer, Share2, Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,8 @@ import { logAudit } from "@/hooks/useAuditLog";
 import { SchedulingPanel } from "@/components/jobs/SchedulingPanel";
 import { GuidedPhotoUpload } from "@/components/jobs/GuidedPhotoUpload";
 import { JobComments } from "@/components/jobs/JobComments";
+import { QuoteTimeline } from "@/components/jobs/QuoteTimeline";
+import { AdminPhotoGallery } from "@/components/jobs/AdminPhotoGallery";
 import {
   notifyStatusChange, notifyQuoteSubmitted, notifyQuoteDecision,
   notifyPhotoUploaded, notifyScaffolderAssigned, notifyOwnerPhotoSubmitted,
@@ -55,9 +57,50 @@ const transitions: Record<string, string[]> = {
   in_progress: ["completed", "cancelled"],
 };
 
+// Owner-facing status messages
+const ownerStatusInfo: Record<string, { title: string; message: string }> = {
+  submitted: {
+    title: "Waiting for Approval",
+    message: "We've sent your photos and location to Manta Ray. We'll update you once the scaffolder has reviewed the photos and SolarEdge has approved the job.",
+  },
+  photo_review: {
+    title: "Waiting for Approval",
+    message: "We've sent your photos and location to Manta Ray. We'll update you once the scaffolder has reviewed the photos and SolarEdge has approved the job.",
+  },
+  quote_pending: {
+    title: "Getting Quotes",
+    message: "We're gathering quotes from scaffolders. We'll be in touch once we have a price for you.",
+  },
+  quote_submitted: {
+    title: "Getting Quotes",
+    message: "Quotes are being reviewed. We'll update you shortly with the approved price.",
+  },
+  negotiating: {
+    title: "Finalising Price",
+    message: "We're finalising the best price for your installation. We'll confirm shortly.",
+  },
+  scheduled: {
+    title: "Scheduled",
+    message: "Your installation has been scheduled. Check the details below.",
+  },
+  in_progress: {
+    title: "Work In Progress",
+    message: "The installation team is currently working on your property.",
+  },
+  completed: {
+    title: "Completed",
+    message: "Your solar panel installation is complete! Thank you for choosing us.",
+  },
+  cancelled: {
+    title: "Cancelled",
+    message: "This job has been cancelled. Please contact us if you have questions.",
+  },
+};
+
 interface Quote {
   id: string; amount: number; notes: string; submitted_at: string;
   review_decision: string | null; scaffolder_id: string; reviewed_by: string | null;
+  reviewed_at: string | null;
 }
 interface Photo {
   id: string; url: string; review_status: string; created_at: string; uploader_id: string | null;
@@ -98,14 +141,14 @@ export default function JobDetail() {
   const [counterOpen, setCounterOpen] = useState<string | null>(null);
   const [counterAmount, setCounterAmount] = useState("");
   const [counterNotes, setCounterNotes] = useState("");
-  const [finalPriceOpen, setFinalPriceOpen] = useState(false);
-  const [finalPriceAmount, setFinalPriceAmount] = useState("");
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
   const [auditOpen, setAuditOpen] = useState(false);
   const [chatTab, setChatTab] = useState("admin_owner");
-  const [submissionConfirmed, setSubmissionConfirmed] = useState(false);
   const [profiles, setProfiles] = useState<Record<string, Scaffolder>>({});
   const [fullscreenPhoto, setFullscreenPhoto] = useState<string | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const [siteReport, setSiteReport] = useState<any>(null);
 
   const fetchAll = useCallback(async () => {
     if (!id) return;
@@ -135,14 +178,17 @@ export default function JobDetail() {
     }
     if (adminRolesRes.data) setAdminIds(adminRolesRes.data.map((r) => r.user_id));
 
-    // Fetch audit log for this job (admin only)
     if (role === "admin") {
       const { data: logs } = await supabase.from("audit_logs")
-        .select("*")
-        .eq("entity_id", id)
-        .order("created_at", { ascending: false })
-        .limit(50);
+        .select("*").eq("entity_id", id).order("created_at", { ascending: false }).limit(50);
       if (logs) setAuditLog(logs as AuditEntry[]);
+    }
+
+    // Fetch site report status for engineer flow
+    if (role === "engineer" || role === "admin") {
+      const { data: report } = await (supabase as any)
+        .from("site_reports").select("id, status").eq("job_id", id).maybeSingle();
+      if (report) setSiteReport(report);
     }
 
     setLoading(false);
@@ -150,65 +196,41 @@ export default function JobDetail() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Open sections based on URL hash
   useEffect(() => {
     const hash = location.hash;
     if (hash === "#photos") setPhotosOpen(true);
     if (hash === "#quotes") setQuotesOpen(true);
-    if (hash === "#chat") { /* chat is always visible */ }
   }, [location.hash]);
-
-  // Show submission banner if owner and job is submitted/photo_review
-  useEffect(() => {
-    if (job && role === "owner" && ["submitted", "photo_review"].includes(job.status)) {
-      setSubmissionConfirmed(true);
-    }
-  }, [job?.status, role]);
 
   const ensureEngineersAssigned = async () => {
     if (!id || role !== "admin" || !user?.id) return;
-
-    const { data: engRoles, error: engRolesError } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "engineer");
-
-    if (engRolesError || !engRoles?.length) return;
-
-    const { data: existingAssignments, error: existingError } = await (supabase as any)
-      .from("job_assignments")
-      .select("scaffolder_id")
-      .eq("job_id", id)
-      .eq("assignment_role", "engineer");
-
-    if (existingError) return;
-
-    const existingEngineerIds = new Set((existingAssignments || []).map((a: any) => a.scaffolder_id));
-    const toInsert = engRoles
-      .filter((eng) => !existingEngineerIds.has(eng.user_id))
-      .map((eng) => ({
-        job_id: id,
-        scaffolder_id: eng.user_id,
-        assigned_by: user.id,
-        assignment_role: "engineer",
-      }));
-
+    const { data: engRoles } = await supabase.from("user_roles").select("user_id").eq("role", "engineer");
+    if (!engRoles?.length) return;
+    const { data: existing } = await (supabase as any).from("job_assignments").select("scaffolder_id").eq("job_id", id).eq("assignment_role", "engineer");
+    const existingIds = new Set((existing || []).map((a: any) => a.scaffolder_id));
+    const toInsert = engRoles.filter((e) => !existingIds.has(e.user_id)).map((e) => ({
+      job_id: id, scaffolder_id: e.user_id, assigned_by: user.id, assignment_role: "engineer",
+    }));
     if (toInsert.length === 0) return;
-
-    const { error: insertError } = await (supabase as any).from("job_assignments").insert(toInsert);
-    if (insertError) {
-      toast({ title: "Engineer assignment failed", description: insertError.message, variant: "destructive" });
-      return;
-    }
-
-    for (const assignment of toInsert) {
-      notifyEngineerAssigned(assignment.scaffolder_id, job.title, id);
-      logAudit(user.id, "engineer_assigned", "assignment", id, { engineer_id: assignment.scaffolder_id });
+    const { error } = await (supabase as any).from("job_assignments").insert(toInsert);
+    if (error) return;
+    for (const a of toInsert) {
+      notifyEngineerAssigned(a.scaffolder_id, job.title, id);
+      logAudit(user.id, "engineer_assigned", "assignment", id, { engineer_id: a.scaffolder_id });
     }
   };
 
   const updateStatus = async (newStatus: string) => {
     const oldStatus = job.status;
+
+    // Engineer: require site report before completing
+    if (role === "engineer" && newStatus === "completed") {
+      if (!siteReport || siteReport.status !== "submitted") {
+        toast({ title: "Site report required", description: "Please complete and submit the site report before marking as finished.", variant: "destructive" });
+        return;
+      }
+    }
+
     const { error } = await supabase.from("jobs").update({ status: newStatus as any, updated_at: new Date().toISOString() }).eq("id", id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -218,7 +240,6 @@ export default function JobDetail() {
       logAudit(user?.id, "status_change", "job", id, { from: oldStatus, to: newStatus });
       const assignedIds = assignments.map((a) => a.scaffolder_id);
       notifyStatusChange(id!, job.title, newStatus, job.owner_id, assignedIds);
-
       if (role === "admin" && ["photo_review", "quote_pending"].includes(newStatus)) {
         await ensureEngineersAssigned();
       }
@@ -246,13 +267,31 @@ export default function JobDetail() {
     fetchAll();
   };
 
-  const reviewPhoto = async (photoId: string, status: "approved" | "rejected") => {
+  const reviewPhoto = async (photoId: string, action: string, comment?: string) => {
+    const status = action === "approved" ? "approved" : "rejected";
     await supabase.from("photos").update({ review_status: status }).eq("id", photoId);
-    toast({ title: `Photo ${status}` });
-    logAudit(user?.id, `photo_${status}`, "photo", photoId);
 
-    // Fallback: approving any photo also ensures engineers are assigned
-    if (status === "approved" && role === "admin") {
+    // If it's a rejection-type action, notify the owner with specific feedback
+    if (action !== "approved" && job.owner_id) {
+      const actionLabels: Record<string, string> = {
+        reshoot_another: "Please upload another photo",
+        reshoot_clearer: "Please upload a clearer photo",
+        reshoot_wider: "Please upload a wider angle",
+        reshoot_closer: "Please upload a closer photo",
+      };
+      const msg = actionLabels[action] || "Photo needs attention";
+      const fullMsg = comment ? `${msg}. Admin comment: ${comment}` : msg;
+      await (await import("@/hooks/useNotificationTriggers")).notify({
+        userId: job.owner_id, type: "photo_feedback",
+        title: "Photo Feedback",
+        message: `For your job "${job.title}": ${fullMsg}`,
+        data: { job_id: id },
+      });
+    }
+
+    toast({ title: action === "approved" ? "Photo approved" : "Feedback sent to owner" });
+    logAudit(user?.id, `photo_${action}`, "photo", photoId, comment ? { comment } : undefined);
+    if (action === "approved" && role === "admin") {
       await ensureEngineersAssigned();
     }
     fetchAll();
@@ -268,7 +307,6 @@ export default function JobDetail() {
     } else {
       toast({ title: "Quote submitted" });
       logAudit(user.id, "quote_submit", "quote", id, { amount: quoteAmount });
-      // Notify ADMIN only (not owner)
       notifyQuoteSubmitted(id, job.title, amount);
       setQuoteOpen(false);
       setQuoteAmount("");
@@ -296,11 +334,9 @@ export default function JobDetail() {
     if (!counterOpen || !user || !id) return;
     const amount = parseFloat(counterAmount);
     if (isNaN(amount)) return;
-    // Mark original as countered
     await supabase.from("quotes").update({
       review_decision: "countered", reviewed_by: user.id, reviewed_at: new Date().toISOString(),
     }).eq("id", counterOpen);
-    // Log the counter
     logAudit(user.id, "quote_countered", "quote", counterOpen, { counter_amount: amount, notes: counterNotes });
     const quote = quotes.find((q) => q.id === counterOpen);
     if (quote) notifyQuoteDecision(quote.scaffolder_id, job.title, `countered at £${amount.toLocaleString()}`, id!);
@@ -308,21 +344,6 @@ export default function JobDetail() {
     setCounterOpen(null);
     setCounterAmount("");
     setCounterNotes("");
-    fetchAll();
-  };
-
-  const setFinalPrice = async () => {
-    if (!id || !user) return;
-    const price = parseFloat(finalPriceAmount);
-    if (isNaN(price)) return;
-    await supabase.from("jobs").update({ final_price: price, updated_at: new Date().toISOString() } as any).eq("id", id);
-    logAudit(user.id, "final_price_set", "job", id, { final_price: price });
-    if (job.owner_id) {
-      notifyOwnerFinalPrice(job.owner_id, job.title, price, id);
-    }
-    toast({ title: `Final price set: £${price.toLocaleString()}` });
-    setFinalPriceOpen(false);
-    setFinalPriceAmount("");
     fetchAll();
   };
 
@@ -364,23 +385,33 @@ export default function JobDetail() {
 
   const handleGuidedComplete = async () => {
     setGuidedUploadOpen(false);
-    setSubmissionConfirmed(true);
     fetchAll();
     toast({ title: "Photos submitted for review" });
-    // Auto-submit the job
     if (job.status === "draft") {
       await supabase.from("jobs").update({ status: "submitted" as any, updated_at: new Date().toISOString() }).eq("id", id);
       setJob((prev: any) => ({ ...prev, status: "submitted" }));
     }
-    // Notify the owner with confirmation message
     if (user?.id && id) {
       notifyOwnerPhotoSubmitted(user.id, job.title, id);
     }
-    // Notify ALL admins that photos were submitted
     if (id) {
       const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
       const aids = adminRoles?.map((r) => r.user_id) || [];
       notifyPhotoUploaded(id, job.title, aids);
+    }
+  };
+
+  const handleShareOrPrint = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Job: ${job.title}`,
+          text: `Job report for ${job.title} at ${job.address}`,
+          url: window.location.href,
+        });
+      } catch { /* cancelled */ }
+    } else {
+      window.print();
     }
   };
 
@@ -394,29 +425,47 @@ export default function JobDetail() {
   const showSiteReport = ["in_progress", "completed"].includes(job.status);
   const canEdit = role === "admin" || (role === "owner" && job.owner_id === user?.id);
 
-  // Build chat recipient map for notifications
   const chatRecipients: Record<string, string[]> = {
     admin_owner: [...adminIds, job.owner_id].filter(Boolean),
     admin_scaffolder: [...adminIds, ...assignedIds],
-    admin_engineer: [...adminIds], // engineer IDs would be added if we tracked them
+    admin_engineer: [...adminIds],
   };
 
-  return (
-    <div className="p-4 lg:p-8 space-y-4 max-w-3xl mx-auto">
-      <Button variant="ghost" size="sm" onClick={() => navigate("/jobs")}>
-        <ArrowLeft className="h-4 w-4 mr-1" /> Back
-      </Button>
+  // Separate owner photos from engineer completion photos
+  const engineerAssignments = assignments.filter(a => a.assignment_role === "engineer");
+  const engineerIds = new Set(engineerAssignments.map(a => a.scaffolder_id));
+  const ownerPhotos = photos.filter(p => !engineerIds.has(p.uploader_id || ""));
+  const completionPhotos = photos.filter(p => engineerIds.has(p.uploader_id || ""));
 
-      {/* Submission Confirmation Banner */}
-      {submissionConfirmed && role === "owner" && (
-        <Card className="card-elevated border-success/30 bg-success/5">
-          <CardContent className="p-4 text-center space-y-2">
-            <CheckCircle2 className="h-8 w-8 text-success mx-auto" />
-            <h3 className="text-sm font-semibold text-foreground">Photos Submitted Successfully!</h3>
-            <p className="text-xs text-muted-foreground max-w-md mx-auto">
-              Thanks for submitting your photos. We're going to get quotes from scaffolders,
-              approve this job with SolarEdge, and get back to you with a proper quote, timeline, and next steps.
-            </p>
+  // Engineer status actions
+  const engineerActions = role === "engineer" && job.status === "in_progress"
+    ? [{ label: "Mark as Finished", status: "completed" }]
+    : [];
+
+  const ownerStatus = ownerStatusInfo[job.status];
+
+  return (
+    <div className="p-4 lg:p-8 space-y-4 max-w-3xl mx-auto print:max-w-none">
+      {/* Back button — not for owner (single-job view) */}
+      {role !== "owner" && (
+        <Button variant="ghost" size="sm" onClick={() => navigate("/jobs")}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back
+        </Button>
+      )}
+
+      {/* Owner Status Card */}
+      {role === "owner" && ownerStatus && (
+        <Card className="card-elevated border-primary/20">
+          <CardContent className="p-5 text-center space-y-2">
+            {job.status === "completed" ? (
+              <CheckCircle2 className="h-10 w-10 text-success mx-auto" />
+            ) : job.status === "cancelled" ? (
+              <XCircle className="h-10 w-10 text-destructive mx-auto" />
+            ) : (
+              <Clock className="h-10 w-10 text-primary mx-auto" />
+            )}
+            <h2 className="text-lg font-bold text-foreground">{ownerStatus.title}</h2>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">{ownerStatus.message}</p>
           </CardContent>
         </Card>
       )}
@@ -434,10 +483,12 @@ export default function JobDetail() {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span className={cn("text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap", statusColor(job.status))}>
-                {statusMap[job.status]}
-              </span>
-              {canEdit && (
+              {role !== "owner" && (
+                <span className={cn("text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap", statusColor(job.status))}>
+                  {statusMap[job.status]}
+                </span>
+              )}
+              {canEdit && role !== "owner" && (
                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => {
                   setEditForm({ title: job.title, description: job.description || "", address: job.address || "" });
                   setEditOpen(true);
@@ -472,9 +523,9 @@ export default function JobDetail() {
           )}
 
           {/* Assigned scaffolders */}
-          {assignments.length > 0 && (
+          {assignments.length > 0 && role !== "owner" && (
             <div className="pt-3 border-t border-border">
-              <p className="text-xs text-muted-foreground mb-2">Assigned Scaffolders</p>
+              <p className="text-xs text-muted-foreground mb-2">Assigned</p>
               <div className="flex flex-wrap gap-1">
                 {assignments.map((a) => {
                   const s = scaffolders.find((sc) => sc.user_id === a.scaffolder_id);
@@ -482,6 +533,7 @@ export default function JobDetail() {
                     <Badge key={a.id} variant="secondary" className="text-xs">
                       <HardHat className="h-3 w-3 mr-1" />
                       {s ? `${s.first_name} ${s.last_name}` : "Unknown"}
+                      {a.assignment_role === "engineer" && " (Engineer)"}
                     </Badge>
                   );
                 })}
@@ -510,24 +562,35 @@ export default function JobDetail() {
                     <UserPlus className="h-3 w-3 mr-1" /> Assign Scaffolder
                   </Button>
                 )}
-                {!(job as any).final_price && quotes.some((q) => q.review_decision === "accepted") && (
-                  <Button size="sm" variant="outline" className="text-xs" onClick={() => setFinalPriceOpen(true)}>
-                    <DollarSign className="h-3 w-3 mr-1" /> Set Final Price for Owner
-                  </Button>
-                )}
                 {showSiteReport && (
                   <Button size="sm" variant="outline" className="text-xs" onClick={() => navigate(`/jobs/${id}/report`)}>
                     <ClipboardList className="h-3 w-3 mr-1" /> Site Report
                   </Button>
                 )}
+                <Button size="sm" variant="outline" className="text-xs" onClick={handleShareOrPrint}>
+                  {navigator.share ? <Share2 className="h-3 w-3 mr-1" /> : <Printer className="h-3 w-3 mr-1" />}
+                  {navigator.share ? "Share" : "Print / PDF"}
+                </Button>
               </div>
             </div>
           )}
 
-          {role === "engineer" && showSiteReport && (
-            <div className="pt-3 border-t border-border">
-              <Button size="sm" onClick={() => navigate(`/jobs/${id}/report`)}>
-                <ClipboardList className="h-4 w-4 mr-1" /> Complete Site Report
+          {/* Engineer actions */}
+          {role === "engineer" && (
+            <div className="pt-3 border-t border-border space-y-3">
+              {showSiteReport && (
+                <Button size="sm" onClick={() => navigate(`/jobs/${id}/report`)}>
+                  <ClipboardList className="h-4 w-4 mr-1" /> Complete Site Report
+                </Button>
+              )}
+              {engineerActions.map((ea) => (
+                <Button key={ea.status} size="sm" variant="outline" className="text-xs" onClick={() => updateStatus(ea.status)}>
+                  <CheckCircle2 className="h-3 w-3 mr-1" /> {ea.label}
+                </Button>
+              ))}
+              <Button size="sm" variant="outline" className="text-xs" onClick={handleShareOrPrint}>
+                {navigator.share ? <Share2 className="h-3 w-3 mr-1" /> : <Printer className="h-3 w-3 mr-1" />}
+                {navigator.share ? "Share PDF" : "Download PDF"}
               </Button>
             </div>
           )}
@@ -537,8 +600,8 @@ export default function JobDetail() {
       {/* Scheduling Panel */}
       {showScheduling && <SchedulingPanel job={job} role={role} onUpdate={fetchAll} />}
 
-      {/* Guided Photo Upload for Owners */}
-      {role === "owner" && ["draft", "submitted", "photo_review"].includes(job.status) && !submissionConfirmed && (
+      {/* Guided Photo Upload for Owners — only if photos haven't been submitted yet */}
+      {role === "owner" && ["draft"].includes(job.status) && (
         <Card className="card-elevated border-primary/20">
           <CardContent className="p-4">
             {guidedUploadOpen ? (
@@ -566,7 +629,7 @@ export default function JobDetail() {
             <CardHeader className="pb-3 cursor-pointer hover:bg-secondary/30 transition-colors rounded-t-xl">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Camera className="h-4 w-4" /> Photos <span className="text-xs font-normal text-muted-foreground">({photos.length})</span>
+                  <Camera className="h-4 w-4" /> Photos <span className="text-xs font-normal text-muted-foreground">({ownerPhotos.length})</span>
                 </CardTitle>
                 <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", photosOpen && "rotate-180")} />
               </div>
@@ -574,20 +637,34 @@ export default function JobDetail() {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent>
-              <div className="mb-3">
-                <label className="cursor-pointer">
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
-                  <Button size="sm" variant="outline" className="text-xs pointer-events-none" asChild>
-                    <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Photo"}</span>
-                  </Button>
-                </label>
-              </div>
-              {photos.length === 0 ? (
+              {/* Upload button for owner additional photos */}
+              {(role === "owner" || role === "admin") && (
+                <div className="mb-3">
+                  <label className="cursor-pointer">
+                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
+                    <Button size="sm" variant="outline" className="text-xs pointer-events-none" asChild>
+                      <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Photo"}</span>
+                    </Button>
+                  </label>
+                </div>
+              )}
+              {ownerPhotos.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">No photos yet</p>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {photos.map((photo) => (
-                    <div key={photo.id} className="relative group rounded-xl overflow-hidden border border-border cursor-pointer" onClick={() => setFullscreenPhoto(photo.url)}>
+                  {ownerPhotos.map((photo, idx) => (
+                    <div
+                      key={photo.id}
+                      className="relative group rounded-xl overflow-hidden border border-border cursor-pointer"
+                      onClick={() => {
+                        if (role === "admin") {
+                          setGalleryIndex(idx);
+                          setGalleryOpen(true);
+                        } else {
+                          setFullscreenPhoto(photo.url);
+                        }
+                      }}
+                    >
                       <img src={photo.url} alt="Site photo" className="w-full h-32 object-cover" />
                       <div className="absolute top-1.5 right-1.5">
                         <span className={cn(
@@ -597,16 +674,6 @@ export default function JobDetail() {
                           photo.review_status === "pending" && "bg-warning/90 text-white",
                         )}>{photo.review_status}</span>
                       </div>
-                      {role === "admin" && photo.review_status === "pending" && (
-                        <div className="absolute bottom-0 inset-x-0 bg-black/60 flex items-center justify-center gap-1 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button size="sm" variant="ghost" className="h-7 text-white hover:text-success hover:bg-transparent text-xs" onClick={() => reviewPhoto(photo.id, "approved")}>
-                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Approve
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-7 text-white hover:text-destructive hover:bg-transparent text-xs" onClick={() => reviewPhoto(photo.id, "rejected")}>
-                            <XCircle className="h-3.5 w-3.5 mr-1" /> Reject
-                          </Button>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -616,7 +683,42 @@ export default function JobDetail() {
         </Card>
       </Collapsible>
 
-      {/* Quotes — Admin and Scaffolder only (owner doesn't see raw quotes) */}
+      {/* Completion Photos (Engineer) */}
+      {(role === "engineer" || role === "admin") && showSiteReport && (
+        <Card className="card-elevated">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4" /> Completion Photos
+              <span className="text-xs font-normal text-muted-foreground">({completionPhotos.length})</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {role === "engineer" && (
+              <div className="mb-3">
+                <label className="cursor-pointer">
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
+                  <Button size="sm" variant="outline" className="text-xs pointer-events-none" asChild>
+                    <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Completion Photo"}</span>
+                  </Button>
+                </label>
+              </div>
+            )}
+            {completionPhotos.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No completion photos yet</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {completionPhotos.map((photo) => (
+                  <div key={photo.id} className="relative rounded-xl overflow-hidden border border-border cursor-pointer" onClick={() => setFullscreenPhoto(photo.url)}>
+                    <img src={photo.url} alt="Completion photo" className="w-full h-32 object-cover" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Quotes — Admin and Scaffolder see timeline */}
       {(role === "admin" || role === "scaffolder") && (
         <Collapsible open={quotesOpen} onOpenChange={setQuotesOpen}>
           <Card className="card-elevated">
@@ -624,7 +726,7 @@ export default function JobDetail() {
               <CardHeader className="pb-3 cursor-pointer hover:bg-secondary/30 transition-colors rounded-t-xl">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base flex items-center gap-2">
-                    <FileText className="h-4 w-4" /> Quotes <span className="text-xs font-normal text-muted-foreground">({quotes.length})</span>
+                    <FileText className="h-4 w-4" /> Quote History <span className="text-xs font-normal text-muted-foreground">({quotes.length})</span>
                   </CardTitle>
                   <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", quotesOpen && "rotate-180")} />
                 </div>
@@ -639,47 +741,21 @@ export default function JobDetail() {
                     </Button>
                   </div>
                 )}
-                {quotes.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">No quotes submitted</p>
-                ) : (
-                  <div className="space-y-3">
-                    {quotes.map((q) => {
-                      const scaffolder = profiles[q.scaffolder_id];
-                      return (
-                        <div key={q.id} className="p-3 rounded-xl border border-border bg-secondary/30 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <DollarSign className="h-4 w-4 text-primary" />
-                              <span className="text-sm font-semibold tabular-nums">£{Number(q.amount).toLocaleString()}</span>
-                              {scaffolder && role === "admin" && (
-                                <span className="text-[10px] text-muted-foreground">by {scaffolder.first_name} {scaffolder.last_name}</span>
-                              )}
-                            </div>
-                            {q.review_decision ? (
-                              <span className={cn(
-                                "text-[10px] px-2 py-0.5 rounded-full font-medium capitalize",
-                                q.review_decision === "accepted" && "bg-success/10 text-success",
-                                q.review_decision === "rejected" && "bg-destructive/10 text-destructive",
-                                q.review_decision === "countered" && "bg-warning/10 text-warning",
-                              )}>{q.review_decision}</span>
-                            ) : (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">Pending</span>
-                            )}
-                          </div>
-                          {q.notes && <p className="text-xs text-muted-foreground">{q.notes}</p>}
-                          <p className="text-[10px] text-muted-foreground">
-                            {new Date(q.submitted_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                          </p>
-                          {role === "admin" && !q.review_decision && (
-                            <div className="flex gap-2 pt-1">
-                              <Button size="sm" variant="outline" className="text-xs h-7 text-success border-success/30" onClick={() => reviewQuote(q.id, "accepted")}>Accept</Button>
-                              <Button size="sm" variant="outline" className="text-xs h-7 text-destructive border-destructive/30" onClick={() => reviewQuote(q.id, "rejected")}>Reject</Button>
-                              <Button size="sm" variant="outline" className="text-xs h-7 text-warning border-warning/30" onClick={() => reviewQuote(q.id, "countered")}>Counter</Button>
-                            </div>
-                          )}
+                <QuoteTimeline quotes={quotes} profiles={profiles} showScaffolderName={role === "admin"} />
+                {/* Admin review actions for pending quotes */}
+                {role === "admin" && quotes.filter(q => !q.review_decision).length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-border space-y-2">
+                    <p className="text-xs text-muted-foreground font-medium">Pending Actions</p>
+                    {quotes.filter(q => !q.review_decision).map(q => (
+                      <div key={q.id} className="flex items-center justify-between p-2 rounded-lg bg-secondary/30">
+                        <span className="text-sm font-semibold">£{Number(q.amount).toLocaleString()}</span>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="text-xs h-7 text-success border-success/30" onClick={() => reviewQuote(q.id, "accepted")}>Accept</Button>
+                          <Button size="sm" variant="outline" className="text-xs h-7 text-destructive border-destructive/30" onClick={() => reviewQuote(q.id, "rejected")}>Reject</Button>
+                          <Button size="sm" variant="outline" className="text-xs h-7 text-warning border-warning/30" onClick={() => reviewQuote(q.id, "countered")}>Counter</Button>
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>
@@ -806,23 +882,6 @@ export default function JobDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* Set Final Price Dialog */}
-      <Dialog open={finalPriceOpen} onOpenChange={setFinalPriceOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Set Final Price for Owner</DialogTitle></DialogHeader>
-          <p className="text-xs text-muted-foreground">This price will be shared with the property owner as the approved cost.</p>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>Final Price (£)</Label>
-              <Input type="number" placeholder="e.g. 3000" value={finalPriceAmount} onChange={(e) => setFinalPriceAmount(e.target.value)} />
-            </div>
-            <Button className="w-full" disabled={!finalPriceAmount} onClick={setFinalPrice}>
-              Confirm & Notify Owner
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* Assign Scaffolder Dialog */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent className="sm:max-w-sm">
@@ -867,26 +926,22 @@ export default function JobDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* Fullscreen Photo Viewer */}
+      {/* Admin Photo Gallery */}
+      <AdminPhotoGallery
+        photos={ownerPhotos}
+        onReview={reviewPhoto}
+        open={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+        initialIndex={galleryIndex}
+      />
+
+      {/* Fullscreen Photo Viewer (non-admin) */}
       {fullscreenPhoto && (
-        <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
-          onClick={() => setFullscreenPhoto(null)}
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-4 right-4 text-white hover:bg-white/20 z-10"
-            onClick={() => setFullscreenPhoto(null)}
-          >
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setFullscreenPhoto(null)}>
+          <Button variant="ghost" size="icon" className="absolute top-4 right-4 text-white hover:bg-white/20 z-10" onClick={() => setFullscreenPhoto(null)}>
             <X className="h-6 w-6" />
           </Button>
-          <img
-            src={fullscreenPhoto}
-            alt="Full size photo"
-            className="max-w-full max-h-full object-contain rounded-lg"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <img src={fullscreenPhoto} alt="Full size photo" className="max-w-full max-h-full object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
     </div>
