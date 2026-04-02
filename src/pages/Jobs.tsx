@@ -98,6 +98,10 @@ export default function Jobs() {
     if (role === "admin" && editForm.status !== editJob.status) {
       updates.status = editForm.status;
     }
+    if (role === "admin") {
+      updates.scheduled_date = editForm.scheduled_date ? editForm.scheduled_date.toISOString() : null;
+      updates.scheduled_duration = editForm.scheduled_duration || 4;
+    }
     const { error } = await supabase.from("jobs").update(updates).eq("id", editJob.id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
