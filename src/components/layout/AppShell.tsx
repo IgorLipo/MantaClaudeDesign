@@ -67,7 +67,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           {sidebarOpen && (
             <div className="animate-fade-in">
-              <h1 className="text-sm font-semibold">Solar Scaffold Pro</h1>
+              <h1 className="text-sm font-semibold">Manta Ray Energy</h1>
               <p className="text-[10px] text-sidebar-foreground/50 capitalize">{role || "loading"}</p>
             </div>
           )}
