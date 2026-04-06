@@ -31,7 +31,7 @@ const navItems: NavItem[] = [
   { path: "/jobs", label: "Jobs", icon: Briefcase, roles: ["admin", "scaffolder", "engineer"] },
   { path: "/my-quotes", label: "My Quotes", icon: ScrollText, roles: ["scaffolder"] },
   { path: "/site-reports", label: "Site Reports", icon: ScrollText, roles: ["engineer"] },
-  { path: "/scaffolders", label: "Scaffolders", icon: HardHat, roles: ["admin"] },
+  { path: "/scaffolders", label: "Team", icon: HardHat, roles: ["admin"] },
   { path: "/regions", label: "Regions", icon: MapPin, roles: ["admin"] },
   { path: "/notifications", label: "Notifications", icon: Bell },
   { path: "/audit", label: "Audit Log", icon: ScrollText, roles: ["admin"] },
