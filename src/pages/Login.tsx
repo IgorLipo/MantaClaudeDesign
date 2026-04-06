@@ -40,6 +40,8 @@ export default function Login() {
     }
   };
 
+  const [creatingDemo, setCreatingDemo] = useState(false);
+
   const fillDemo = (role: string) => {
     const demos: Record<string, { email: string; password: string }> = {
       admin: { email: "admin@solarops.co.uk", password: "admin123" },
@@ -49,6 +51,21 @@ export default function Login() {
     };
     const d = demos[role];
     if (d) { setEmail(d.email); setPassword(d.password); }
+  };
+
+  const handleNewOwnerDemo = async () => {
+    setCreatingDemo(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-demo-owner");
+      if (error || !data?.email) throw new Error(error?.message || "Failed to create demo account");
+      const { error: signInErr } = await signIn(data.email, data.password);
+      if (signInErr) throw signInErr;
+      navigate("/new-job");
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setCreatingDemo(false);
+    }
   };
 
   return (
