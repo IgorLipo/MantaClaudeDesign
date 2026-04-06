@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,8 @@ export default function Login() {
     }
   };
 
+  const [creatingDemo, setCreatingDemo] = useState(false);
+
   const fillDemo = (role: string) => {
     const demos: Record<string, { email: string; password: string }> = {
       admin: { email: "admin@solarops.co.uk", password: "admin123" },
@@ -49,6 +52,21 @@ export default function Login() {
     };
     const d = demos[role];
     if (d) { setEmail(d.email); setPassword(d.password); }
+  };
+
+  const handleNewOwnerDemo = async () => {
+    setCreatingDemo(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-demo-owner");
+      if (error || !data?.email) throw new Error(error?.message || "Failed to create demo account");
+      const { error: signInErr } = await signIn(data.email, data.password);
+      if (signInErr) throw signInErr;
+      navigate("/new-job");
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setCreatingDemo(false);
+    }
   };
 
   return (
@@ -109,12 +127,24 @@ export default function Login() {
             <div className="pt-3 border-t border-border">
               <p className="text-xs text-muted-foreground text-center mb-2">Demo access (review only)</p>
               <div className="grid grid-cols-2 gap-2">
-                {["admin", "owner", "scaffolder", "engineer"].map((r) => (
+                {["admin", "scaffolder", "engineer"].map((r) => (
                   <Button key={r} variant="outline" size="sm" className="text-xs capitalize" onClick={() => fillDemo(r)}>
                     {r}
                   </Button>
                 ))}
+                <Button variant="outline" size="sm" className="text-xs" onClick={() => fillDemo("owner")}>
+                  Existing Owner
+                </Button>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-2 text-xs border-primary/30 text-primary"
+                disabled={creatingDemo}
+                onClick={handleNewOwnerDemo}
+              >
+                {creatingDemo ? "Creating demo..." : "New Owner Demo →"}
+              </Button>
             </div>
           )}
         </CardContent>
