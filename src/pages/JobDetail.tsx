@@ -873,7 +873,7 @@ export default function JobDetail() {
         </Collapsible>
       )}
 
-      {/* Private Chat Channels — NOT shown for owner */}
+      {/* Private Chat Channels — Admin↔Scaffolder and Admin↔Engineer only */}
       {role !== "owner" && (
         <Card className="card-elevated">
           <CardHeader className="pb-3">
@@ -885,13 +885,9 @@ export default function JobDetail() {
             {role === "admin" ? (
               <Tabs value={chatTab} onValueChange={setChatTab}>
                 <TabsList className="w-full mb-3">
-                  <TabsTrigger value="admin_owner" className="flex-1 text-xs">Owner</TabsTrigger>
                   <TabsTrigger value="admin_scaffolder" className="flex-1 text-xs">Scaffolder</TabsTrigger>
                   <TabsTrigger value="admin_engineer" className="flex-1 text-xs">Engineer</TabsTrigger>
                 </TabsList>
-                <TabsContent value="admin_owner">
-                  <JobComments jobId={id!} channel="admin_owner" jobTitle={job.title} recipientIds={chatRecipients.admin_owner} />
-                </TabsContent>
                 <TabsContent value="admin_scaffolder">
                   <JobComments jobId={id!} channel="admin_scaffolder" jobTitle={job.title} recipientIds={chatRecipients.admin_scaffolder} />
                 </TabsContent>
