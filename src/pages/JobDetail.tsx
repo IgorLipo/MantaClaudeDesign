@@ -723,37 +723,106 @@ export default function JobDetail() {
         </Card>
       </Collapsible>
 
-      {/* Completion Photos (Engineer) */}
+      {/* Scaffolder Photos — Before/After Scaffolding */}
+      {(role === "scaffolder" || role === "admin") && (
+        <Card className="card-elevated">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <HardHat className="h-4 w-4" /> Scaffolder Photos
+              <span className="text-xs font-normal text-muted-foreground">({scaffolderPhotos.length})</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {role === "scaffolder" && (
+              <div className="mb-3">
+                <label className="cursor-pointer">
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
+                  <Button size="sm" variant="outline" className="text-xs pointer-events-none" asChild>
+                    <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Photo"}</span>
+                  </Button>
+                </label>
+              </div>
+            )}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Before Scaffolding</p>
+              {scaffolderPhotos.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-3">No photos yet</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {scaffolderPhotos.slice(0, Math.ceil(scaffolderPhotos.length / 2)).map((photo) => (
+                    <div key={photo.id} className="relative rounded-xl overflow-hidden border border-border cursor-pointer" onClick={() => setFullscreenPhoto(photo.url)}>
+                      <img src={photo.url} alt="Before scaffolding" className="w-full h-32 object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">After Scaffolding</p>
+              {scaffolderPhotos.length <= 1 ? (
+                <p className="text-sm text-muted-foreground text-center py-3">No photos yet</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {scaffolderPhotos.slice(Math.ceil(scaffolderPhotos.length / 2)).map((photo) => (
+                    <div key={photo.id} className="relative rounded-xl overflow-hidden border border-border cursor-pointer" onClick={() => setFullscreenPhoto(photo.url)}>
+                      <img src={photo.url} alt="After scaffolding" className="w-full h-32 object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Engineer Photos — Before/After Roof Work */}
       {(role === "engineer" || role === "admin") && showSiteReport && (
         <Card className="card-elevated">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4" /> Completion Photos
-              <span className="text-xs font-normal text-muted-foreground">({completionPhotos.length})</span>
+              <CheckCircle2 className="h-4 w-4" /> Engineer Photos
+              <span className="text-xs font-normal text-muted-foreground">({engineerPhotos.length})</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {role === "engineer" && (
               <div className="mb-3">
                 <label className="cursor-pointer">
                   <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
                   <Button size="sm" variant="outline" className="text-xs pointer-events-none" asChild>
-                    <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Completion Photo"}</span>
+                    <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Photo"}</span>
                   </Button>
                 </label>
               </div>
             )}
-            {completionPhotos.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No completion photos yet</p>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {completionPhotos.map((photo) => (
-                  <div key={photo.id} className="relative rounded-xl overflow-hidden border border-border cursor-pointer" onClick={() => setFullscreenPhoto(photo.url)}>
-                    <img src={photo.url} alt="Completion photo" className="w-full h-32 object-cover" />
-                  </div>
-                ))}
-              </div>
-            )}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Before Roof Work</p>
+              {engineerPhotos.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-3">No photos yet</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {engineerPhotos.slice(0, Math.ceil(engineerPhotos.length / 2)).map((photo) => (
+                    <div key={photo.id} className="relative rounded-xl overflow-hidden border border-border cursor-pointer" onClick={() => setFullscreenPhoto(photo.url)}>
+                      <img src={photo.url} alt="Before roof work" className="w-full h-32 object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">After Roof Work</p>
+              {engineerPhotos.length <= 1 ? (
+                <p className="text-sm text-muted-foreground text-center py-3">No photos yet</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {engineerPhotos.slice(Math.ceil(engineerPhotos.length / 2)).map((photo) => (
+                    <div key={photo.id} className="relative rounded-xl overflow-hidden border border-border cursor-pointer" onClick={() => setFullscreenPhoto(photo.url)}>
+                      <img src={photo.url} alt="After roof work" className="w-full h-32 object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
