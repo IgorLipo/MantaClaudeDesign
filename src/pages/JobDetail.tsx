@@ -501,7 +501,7 @@ export default function JobDetail() {
               <CardTitle className="text-lg">{job.title}</CardTitle>
               {(job as any).service_type && (
                 <Badge variant="secondary" className="mt-1 text-[10px]">
-                  {(job as any).service_type === "installation" ? "New Installation" : "Service / Maintenance"}
+                  {(job as any).service_type === "new_job" ? "New Job" : (job as any).service_type === "service" ? "Service" : (job as any).service_type === "full_site_replacement" ? "Full Site Replacement" : (job as any).service_type}
                 </Badge>
               )}
             </div>

@@ -183,9 +183,9 @@ export default function OwnerOnboarding() {
     // Auto-advance
     const idx = PHOTO_STEPS.findIndex((s) => s.id === stepId);
     if (idx >= 0 && idx < PHOTO_STEPS.length - 1) {
-      setTimeout(() => setStep(idx + 2), 400);
+      setTimeout(() => setStep(idx + 3), 400);
     } else if (idx === PHOTO_STEPS.length - 1) {
-      setTimeout(() => setStep(PHOTO_STEPS.length + 1), 400);
+      setTimeout(() => setStep(PHOTO_STEPS.length + 2), 400);
     }
   };
 
