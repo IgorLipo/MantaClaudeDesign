@@ -61,11 +61,11 @@ const transitions: Record<string, string[]> = {
 const ownerStatusInfo: Record<string, { title: string; message: string }> = {
   submitted: {
     title: "Waiting for Approval",
-    message: "We've sent your photos and location to Manta Ray. We'll update you once the scaffolder has reviewed the photos and SolarEdge has approved the job.",
+    message: "We've sent your photos and location to Manta Ray Energy. We'll update you once the team has reviewed your submission.",
   },
   photo_review: {
     title: "Waiting for Approval",
-    message: "We've sent your photos and location to Manta Ray. We'll update you once the scaffolder has reviewed the photos and SolarEdge has approved the job.",
+    message: "We've sent your photos and location to Manta Ray Energy. We'll update you once the team has reviewed your submission.",
   },
   quote_pending: {
     title: "Getting Quotes",
@@ -143,7 +143,7 @@ export default function JobDetail() {
   const [counterNotes, setCounterNotes] = useState("");
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
   const [auditOpen, setAuditOpen] = useState(false);
-  const [chatTab, setChatTab] = useState("admin_owner");
+  const [chatTab, setChatTab] = useState("admin_scaffolder");
   const [profiles, setProfiles] = useState<Record<string, Scaffolder>>({});
   const [fullscreenPhoto, setFullscreenPhoto] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -446,16 +446,19 @@ export default function JobDetail() {
   const canEdit = role === "admin" || (role === "owner" && job.owner_id === user?.id);
 
   const chatRecipients: Record<string, string[]> = {
-    admin_owner: [...adminIds, job.owner_id].filter(Boolean),
     admin_scaffolder: [...adminIds, ...assignedIds],
     admin_engineer: [...adminIds],
   };
 
-  // Separate owner photos from engineer completion photos
+  // Separate photos by uploader role
   const engineerAssignments = assignments.filter(a => a.assignment_role === "engineer");
   const engineerIds = new Set(engineerAssignments.map(a => a.scaffolder_id));
-  const ownerPhotos = photos.filter(p => !engineerIds.has(p.uploader_id || ""));
-  const completionPhotos = photos.filter(p => engineerIds.has(p.uploader_id || ""));
+  const scaffolderAssignments = assignments.filter(a => a.assignment_role === "scaffolder" || !a.assignment_role || a.assignment_role === "scaffolder");
+  const scaffolderIds = new Set(scaffolderAssignments.map(a => a.scaffolder_id));
+  
+  const ownerPhotos = photos.filter(p => !engineerIds.has(p.uploader_id || "") && !scaffolderIds.has(p.uploader_id || ""));
+  const scaffolderPhotos = photos.filter(p => scaffolderIds.has(p.uploader_id || ""));
+  const engineerPhotos = photos.filter(p => engineerIds.has(p.uploader_id || ""));
 
   // Engineer status actions
   const engineerActions = role === "engineer" && job.status === "in_progress"
