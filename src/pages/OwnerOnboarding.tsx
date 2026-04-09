@@ -329,7 +329,8 @@ export default function OwnerOnboarding() {
     navigate(`/jobs/${jobId}`);
   };
 
-  const totalSteps = PHOTO_STEPS.length + 2;
+  // Steps: 0=address, 1=job type, 2..N+1=photos, N+2=review
+  const totalSteps = PHOTO_STEPS.length + 3;
   const progress = ((step + 1) / totalSteps) * 100;
   const requiredPhotosDone = PHOTO_STEPS.filter((s) => s.required).every(
     (s) => photos[s.id]
@@ -337,8 +338,9 @@ export default function OwnerOnboarding() {
 
   const canProceed = () => {
     if (step === 0) return addressConfirmed;
-    if (step > 0 && step <= PHOTO_STEPS.length) {
-      const ps = PHOTO_STEPS[step - 1];
+    if (step === 1) return !!serviceType;
+    if (step > 1 && step <= PHOTO_STEPS.length + 1) {
+      const ps = PHOTO_STEPS[step - 2];
       return !ps.required || !!photos[ps.id];
     }
     return requiredPhotosDone;
