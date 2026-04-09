@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Briefcase, Clock, HardHat, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Briefcase, Clock, HardHat, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -55,14 +55,16 @@ export default function Dashboard() {
 
   const greeting = profile?.first_name ? `Welcome back, ${profile.first_name}` : "Welcome back";
 
+  const roleLabel = role === "owner" ? "System Owner" : role ? role.charAt(0).toUpperCase() + role.slice(1) : "";
+
   return (
     <div className="p-4 lg:p-8 space-y-6 max-w-7xl mx-auto">
       <div>
         <h1 className="text-2xl font-semibold text-foreground">{greeting}</h1>
-        <p className="text-sm text-muted-foreground mt-1 capitalize">{role} Dashboard</p>
+        <p className="text-sm text-muted-foreground mt-1">{roleLabel} Dashboard</p>
       </div>
 
-      {/* KPI Cards — all clickable */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
         {kpis.map((kpi) => (
           <Card
@@ -83,7 +85,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Recent Jobs — clickable rows */}
+      {/* Recent Jobs */}
       <Card className="card-elevated">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold">Recent Jobs</CardTitle>
@@ -124,20 +126,6 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
-
-      {role === "admin" && (
-        <Card className="card-elevated border-warning/20">
-          <CardContent className="p-4 flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Admin Notice</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Seed demo data by creating users through the demo credentials on the login page, then create jobs from the Jobs page.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

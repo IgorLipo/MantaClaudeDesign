@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import jsPDF from "jspdf";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import {
   Camera, ArrowRight, ArrowLeft, MapPin, CheckCircle2,
   Upload, Home, Ruler, Eye,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { logAudit } from "@/hooks/useAuditLog";
 import {
@@ -61,6 +63,7 @@ export default function OwnerOnboarding() {
   const [lat, setLat] = useState(51.5074);
   const [lng, setLng] = useState(-0.1278);
   const [addressConfirmed, setAddressConfirmed] = useState(false);
+  const [serviceType, setServiceType] = useState("new_job");
 
   const [photos, setPhotos] = useState<
     Record<string, { url: string; storageUrl: string }>
@@ -180,16 +183,92 @@ export default function OwnerOnboarding() {
     // Auto-advance
     const idx = PHOTO_STEPS.findIndex((s) => s.id === stepId);
     if (idx >= 0 && idx < PHOTO_STEPS.length - 1) {
-      setTimeout(() => setStep(idx + 2), 400);
+      setTimeout(() => setStep(idx + 3), 400);
     } else if (idx === PHOTO_STEPS.length - 1) {
-      setTimeout(() => setStep(PHOTO_STEPS.length + 1), 400);
+      setTimeout(() => setStep(PHOTO_STEPS.length + 2), 400);
     }
+  };
+
+  const serviceTypeLabels: Record<string, string> = {
+    new_job: "New Job",
+    service: "Service",
+    full_site_replacement: "Full Site Replacement",
+  };
+
+  const generateOnboardingPdf = async () => {
+    const doc = new jsPDF();
+    const pw = doc.internal.pageSize.getWidth();
+    let y = 20;
+    
+    doc.setFillColor(249, 115, 22);
+    doc.rect(0, 0, pw, 35, "F");
+    doc.setTextColor(255);
+    doc.setFontSize(18);
+    doc.text("Manta Ray Energy", 15, 15);
+    doc.setFontSize(12);
+    doc.text("Onboarding Application", 15, 25);
+    
+    y = 45;
+    doc.setTextColor(0);
+    doc.setFontSize(14);
+    doc.text("Job Details", 15, y); y += 10;
+    
+    doc.setFontSize(10);
+    doc.text(`Job Type: ${serviceTypeLabels[serviceType] || serviceType}`, 15, y); y += 7;
+    doc.text(`Address: ${address}`, 15, y); y += 7;
+    doc.text(`Latitude: ${lat.toFixed(6)}`, 15, y); y += 7;
+    doc.text(`Longitude: ${lng.toFixed(6)}`, 15, y); y += 7;
+    doc.text(`Date: ${new Date().toLocaleDateString("en-GB")}`, 15, y); y += 12;
+    
+    // Add map image if available
+    if (mapsKey) {
+      try {
+        const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=18&size=560x200&maptype=satellite&markers=color:red%7C${lat},${lng}&key=${mapsKey}`;
+        const img = await loadImage(mapUrl);
+        doc.addImage(img, "JPEG", 15, y, pw - 30, 50);
+        y += 55;
+      } catch { /* skip map if fails */ }
+    }
+    
+    // Photos
+    if (Object.keys(photos).length > 0) {
+      doc.setFontSize(14);
+      doc.text("Uploaded Photos", 15, y); y += 8;
+      
+      for (const [key, photo] of Object.entries(photos)) {
+        if (y > 240) { doc.addPage(); y = 20; }
+        doc.setFontSize(9);
+        doc.text(key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()), 15, y); y += 3;
+        try {
+          const img = await loadImage(photo.storageUrl || photo.url);
+          doc.addImage(img, "JPEG", 15, y, 80, 50);
+          y += 55;
+        } catch { y += 5; }
+      }
+    }
+    
+    return doc.output("blob");
+  };
+
+  const loadImage = (url: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const c = document.createElement("canvas");
+        c.width = img.width; c.height = img.height;
+        c.getContext("2d")!.drawImage(img, 0, 0);
+        resolve(c.toDataURL("image/jpeg"));
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
   };
 
   const handleSubmit = async () => {
     if (!user) return;
     setSubmitting(true);
-    const title = address.split(",")[0] || "Solar Installation";
+    const title = address.split(",")[0] || "New Job";
 
     const { error: jobError } = await supabase.from("jobs").insert({
       id: jobId,
@@ -199,7 +278,7 @@ export default function OwnerOnboarding() {
       lat,
       lng,
       status: "submitted" as any,
-      service_type: "installation",
+      service_type: serviceType,
     } as any);
     if (jobError) {
       toast({
@@ -220,7 +299,7 @@ export default function OwnerOnboarding() {
       });
     }
 
-    logAudit(user.id, "job_created", "job", jobId, { address });
+    logAudit(user.id, "job_created", "job", jobId, { address, service_type: serviceType });
     notifyOwnerPhotoSubmitted(user.id, title, jobId);
 
     const { data: adminRoles } = await supabase
@@ -228,19 +307,31 @@ export default function OwnerOnboarding() {
       .select("user_id")
       .eq("role", "admin");
     if (adminRoles) {
-      notifyPhotoUploaded(
-        jobId,
-        title,
-        adminRoles.map((r) => r.user_id)
-      );
+      notifyPhotoUploaded(jobId, title, adminRoles.map((r) => r.user_id));
     }
+
+    // Generate and download onboarding PDF
+    try {
+      const pdfBlob = await generateOnboardingPdf();
+      const file = new File([pdfBlob], `onboarding-${jobId.slice(0, 8)}.pdf`, { type: "application/pdf" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: "Onboarding Application", files: [file] }).catch(() => {});
+      } else {
+        const url = URL.createObjectURL(pdfBlob);
+        const a = document.createElement("a");
+        a.href = url; a.download = file.name;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+      }
+    } catch { /* PDF gen is best-effort */ }
 
     toast({ title: "Application submitted!" });
     setSubmitting(false);
     navigate(`/jobs/${jobId}`);
   };
 
-  const totalSteps = PHOTO_STEPS.length + 2;
+  // Steps: 0=address, 1=job type, 2..N+1=photos, N+2=review
+  const totalSteps = PHOTO_STEPS.length + 3;
   const progress = ((step + 1) / totalSteps) * 100;
   const requiredPhotosDone = PHOTO_STEPS.filter((s) => s.required).every(
     (s) => photos[s.id]
@@ -248,8 +339,9 @@ export default function OwnerOnboarding() {
 
   const canProceed = () => {
     if (step === 0) return addressConfirmed;
-    if (step > 0 && step <= PHOTO_STEPS.length) {
-      const ps = PHOTO_STEPS[step - 1];
+    if (step === 1) return !!serviceType;
+    if (step > 1 && step <= PHOTO_STEPS.length + 1) {
+      const ps = PHOTO_STEPS[step - 2];
       return !ps.required || !!photos[ps.id];
     }
     return requiredPhotosDone;
@@ -310,11 +402,42 @@ export default function OwnerOnboarding() {
         </div>
       )}
 
+      {/* Step 1: Job Type */}
+      {step === 1 && (
+        <div className="space-y-4 animate-fade-in">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">What type of job?</h2>
+            <p className="text-sm text-muted-foreground mt-1">Select the service you need</p>
+          </div>
+          <div className="space-y-2">
+            {[
+              { value: "new_job", label: "New Job", desc: "New solar panel installation" },
+              { value: "service", label: "Service", desc: "Maintenance or repair of existing installation" },
+              { value: "full_site_replacement", label: "Full Site Replacement", desc: "Complete replacement of existing system" },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setServiceType(opt.value)}
+                className={cn(
+                  "w-full text-left p-4 rounded-xl border-2 transition-colors",
+                  serviceType === opt.value
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/30"
+                )}
+              >
+                <p className="text-sm font-medium text-foreground">{opt.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{opt.desc}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Photo Steps */}
-      {step > 0 &&
-        step <= PHOTO_STEPS.length &&
+      {step > 1 &&
+        step <= PHOTO_STEPS.length + 1 &&
         (() => {
-          const ps = PHOTO_STEPS[step - 1];
+          const ps = PHOTO_STEPS[step - 2];
           const Icon = ps.icon;
           const uploaded = photos[ps.id];
 
@@ -413,7 +536,7 @@ export default function OwnerOnboarding() {
         })()}
 
       {/* Review Step */}
-      {step === PHOTO_STEPS.length + 1 && (
+      {step === PHOTO_STEPS.length + 2 && (
         <div className="space-y-4 animate-fade-in">
           <div>
             <h2 className="text-xl font-semibold text-foreground">
@@ -430,6 +553,9 @@ export default function OwnerOnboarding() {
                 <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
                 <p className="text-sm font-medium text-foreground">{address}</p>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Job Type: {serviceTypeLabels[serviceType] || serviceType}
+              </p>
               {mapsKey && (
                 <img
                   src={`https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=18&size=600x200&maptype=satellite&markers=color:red%7C${lat},${lng}&key=${mapsKey}`}
@@ -479,12 +605,12 @@ export default function OwnerOnboarding() {
           <div />
         )}
 
-        {step < PHOTO_STEPS.length + 1 ? (
+        {step < PHOTO_STEPS.length + 2 ? (
           <div className="flex gap-2">
-            {step > 0 &&
-              step <= PHOTO_STEPS.length &&
-              !PHOTO_STEPS[step - 1].required &&
-              !photos[PHOTO_STEPS[step - 1].id] && (
+            {step > 1 &&
+              step <= PHOTO_STEPS.length + 1 &&
+              !PHOTO_STEPS[step - 2].required &&
+              !photos[PHOTO_STEPS[step - 2].id] && (
                 <Button
                   variant="ghost"
                   size="sm"

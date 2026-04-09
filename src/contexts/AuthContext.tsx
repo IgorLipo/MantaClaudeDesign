@@ -20,7 +20,7 @@ interface AuthContextType {
   role: AppRole | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, firstName: string, lastName: string, role?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -74,12 +74,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
-    const { error } = await supabase.auth.signUp({
+  const signUp = async (email: string, password: string, firstName: string, lastName: string, role?: string) => {
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { first_name: firstName, last_name: lastName } },
+      options: { data: { first_name: firstName, last_name: lastName, signup_role: role || "owner" } },
     });
+    if (!error && data.user && role && role !== "owner") {
+      // Update the default 'owner' role to the selected role via edge function
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await supabase.functions.invoke("update-signup-role", {
+          body: { user_id: data.user.id, role },
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+      }
+    }
     return { error: error as Error | null };
   };
 

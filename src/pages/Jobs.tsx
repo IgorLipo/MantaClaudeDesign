@@ -155,8 +155,9 @@ export default function Jobs() {
                     <Select value={form.service_type} onValueChange={(v) => setForm({ ...form, service_type: v })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="installation">New Panel Installation</SelectItem>
-                        <SelectItem value="service">Panel Service / Maintenance</SelectItem>
+                        <SelectItem value="new_job">New Job</SelectItem>
+                        <SelectItem value="service">Service</SelectItem>
+                        <SelectItem value="full_site_replacement">Full Site Replacement</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

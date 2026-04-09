@@ -38,6 +38,12 @@ const navItems: NavItem[] = [
   { path: "/settings", label: "Settings", icon: Settings },
 ];
 
+const roleDisplayName = (role: string | null) => {
+  if (role === "owner") return "System Owner";
+  if (role) return role.charAt(0).toUpperCase() + role.slice(1);
+  return "loading";
+};
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -68,7 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {sidebarOpen && (
             <div className="animate-fade-in">
               <h1 className="text-sm font-semibold">Manta Ray Energy</h1>
-              <p className="text-[10px] text-sidebar-foreground/50 capitalize">{role || "loading"}</p>
+              <p className="text-[10px] text-sidebar-foreground/50">{roleDisplayName(role)}</p>
             </div>
           )}
         </div>

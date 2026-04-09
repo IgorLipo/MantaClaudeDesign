@@ -61,11 +61,11 @@ const transitions: Record<string, string[]> = {
 const ownerStatusInfo: Record<string, { title: string; message: string }> = {
   submitted: {
     title: "Waiting for Approval",
-    message: "We've sent your photos and location to Manta Ray. We'll update you once the scaffolder has reviewed the photos and SolarEdge has approved the job.",
+    message: "We've sent your photos and location to Manta Ray Energy. We'll update you once the team has reviewed your submission.",
   },
   photo_review: {
     title: "Waiting for Approval",
-    message: "We've sent your photos and location to Manta Ray. We'll update you once the scaffolder has reviewed the photos and SolarEdge has approved the job.",
+    message: "We've sent your photos and location to Manta Ray Energy. We'll update you once the team has reviewed your submission.",
   },
   quote_pending: {
     title: "Getting Quotes",
@@ -143,7 +143,7 @@ export default function JobDetail() {
   const [counterNotes, setCounterNotes] = useState("");
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
   const [auditOpen, setAuditOpen] = useState(false);
-  const [chatTab, setChatTab] = useState("admin_owner");
+  const [chatTab, setChatTab] = useState("admin_scaffolder");
   const [profiles, setProfiles] = useState<Record<string, Scaffolder>>({});
   const [fullscreenPhoto, setFullscreenPhoto] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -446,16 +446,19 @@ export default function JobDetail() {
   const canEdit = role === "admin" || (role === "owner" && job.owner_id === user?.id);
 
   const chatRecipients: Record<string, string[]> = {
-    admin_owner: [...adminIds, job.owner_id].filter(Boolean),
     admin_scaffolder: [...adminIds, ...assignedIds],
     admin_engineer: [...adminIds],
   };
 
-  // Separate owner photos from engineer completion photos
+  // Separate photos by uploader role
   const engineerAssignments = assignments.filter(a => a.assignment_role === "engineer");
   const engineerIds = new Set(engineerAssignments.map(a => a.scaffolder_id));
-  const ownerPhotos = photos.filter(p => !engineerIds.has(p.uploader_id || ""));
-  const completionPhotos = photos.filter(p => engineerIds.has(p.uploader_id || ""));
+  const scaffolderAssignments = assignments.filter(a => a.assignment_role === "scaffolder" || !a.assignment_role || a.assignment_role === "scaffolder");
+  const scaffolderIds = new Set(scaffolderAssignments.map(a => a.scaffolder_id));
+  
+  const ownerPhotos = photos.filter(p => !engineerIds.has(p.uploader_id || "") && !scaffolderIds.has(p.uploader_id || ""));
+  const scaffolderPhotos = photos.filter(p => scaffolderIds.has(p.uploader_id || ""));
+  const engineerPhotos = photos.filter(p => engineerIds.has(p.uploader_id || ""));
 
   // Engineer status actions
   const engineerActions = role === "engineer" && job.status === "in_progress"
@@ -498,7 +501,7 @@ export default function JobDetail() {
               <CardTitle className="text-lg">{job.title}</CardTitle>
               {(job as any).service_type && (
                 <Badge variant="secondary" className="mt-1 text-[10px]">
-                  {(job as any).service_type === "installation" ? "New Installation" : "Service / Maintenance"}
+                  {(job as any).service_type === "new_job" ? "New Job" : (job as any).service_type === "service" ? "Service" : (job as any).service_type === "full_site_replacement" ? "Full Site Replacement" : (job as any).service_type}
                 </Badge>
               )}
             </div>
@@ -720,37 +723,106 @@ export default function JobDetail() {
         </Card>
       </Collapsible>
 
-      {/* Completion Photos (Engineer) */}
+      {/* Scaffolder Photos — Before/After Scaffolding */}
+      {(role === "scaffolder" || role === "admin") && (
+        <Card className="card-elevated">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <HardHat className="h-4 w-4" /> Scaffolder Photos
+              <span className="text-xs font-normal text-muted-foreground">({scaffolderPhotos.length})</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {role === "scaffolder" && (
+              <div className="mb-3">
+                <label className="cursor-pointer">
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
+                  <Button size="sm" variant="outline" className="text-xs pointer-events-none" asChild>
+                    <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Photo"}</span>
+                  </Button>
+                </label>
+              </div>
+            )}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Before Scaffolding</p>
+              {scaffolderPhotos.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-3">No photos yet</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {scaffolderPhotos.slice(0, Math.ceil(scaffolderPhotos.length / 2)).map((photo) => (
+                    <div key={photo.id} className="relative rounded-xl overflow-hidden border border-border cursor-pointer" onClick={() => setFullscreenPhoto(photo.url)}>
+                      <img src={photo.url} alt="Before scaffolding" className="w-full h-32 object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">After Scaffolding</p>
+              {scaffolderPhotos.length <= 1 ? (
+                <p className="text-sm text-muted-foreground text-center py-3">No photos yet</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {scaffolderPhotos.slice(Math.ceil(scaffolderPhotos.length / 2)).map((photo) => (
+                    <div key={photo.id} className="relative rounded-xl overflow-hidden border border-border cursor-pointer" onClick={() => setFullscreenPhoto(photo.url)}>
+                      <img src={photo.url} alt="After scaffolding" className="w-full h-32 object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Engineer Photos — Before/After Roof Work */}
       {(role === "engineer" || role === "admin") && showSiteReport && (
         <Card className="card-elevated">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4" /> Completion Photos
-              <span className="text-xs font-normal text-muted-foreground">({completionPhotos.length})</span>
+              <CheckCircle2 className="h-4 w-4" /> Engineer Photos
+              <span className="text-xs font-normal text-muted-foreground">({engineerPhotos.length})</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {role === "engineer" && (
               <div className="mb-3">
                 <label className="cursor-pointer">
                   <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
                   <Button size="sm" variant="outline" className="text-xs pointer-events-none" asChild>
-                    <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Completion Photo"}</span>
+                    <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Photo"}</span>
                   </Button>
                 </label>
               </div>
             )}
-            {completionPhotos.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No completion photos yet</p>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {completionPhotos.map((photo) => (
-                  <div key={photo.id} className="relative rounded-xl overflow-hidden border border-border cursor-pointer" onClick={() => setFullscreenPhoto(photo.url)}>
-                    <img src={photo.url} alt="Completion photo" className="w-full h-32 object-cover" />
-                  </div>
-                ))}
-              </div>
-            )}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Before Roof Work</p>
+              {engineerPhotos.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-3">No photos yet</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {engineerPhotos.slice(0, Math.ceil(engineerPhotos.length / 2)).map((photo) => (
+                    <div key={photo.id} className="relative rounded-xl overflow-hidden border border-border cursor-pointer" onClick={() => setFullscreenPhoto(photo.url)}>
+                      <img src={photo.url} alt="Before roof work" className="w-full h-32 object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">After Roof Work</p>
+              {engineerPhotos.length <= 1 ? (
+                <p className="text-sm text-muted-foreground text-center py-3">No photos yet</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {engineerPhotos.slice(Math.ceil(engineerPhotos.length / 2)).map((photo) => (
+                    <div key={photo.id} className="relative rounded-xl overflow-hidden border border-border cursor-pointer" onClick={() => setFullscreenPhoto(photo.url)}>
+                      <img src={photo.url} alt="After roof work" className="w-full h-32 object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -801,7 +873,7 @@ export default function JobDetail() {
         </Collapsible>
       )}
 
-      {/* Private Chat Channels — NOT shown for owner */}
+      {/* Private Chat Channels — Admin↔Scaffolder and Admin↔Engineer only */}
       {role !== "owner" && (
         <Card className="card-elevated">
           <CardHeader className="pb-3">
@@ -813,13 +885,9 @@ export default function JobDetail() {
             {role === "admin" ? (
               <Tabs value={chatTab} onValueChange={setChatTab}>
                 <TabsList className="w-full mb-3">
-                  <TabsTrigger value="admin_owner" className="flex-1 text-xs">Owner</TabsTrigger>
                   <TabsTrigger value="admin_scaffolder" className="flex-1 text-xs">Scaffolder</TabsTrigger>
                   <TabsTrigger value="admin_engineer" className="flex-1 text-xs">Engineer</TabsTrigger>
                 </TabsList>
-                <TabsContent value="admin_owner">
-                  <JobComments jobId={id!} channel="admin_owner" jobTitle={job.title} recipientIds={chatRecipients.admin_owner} />
-                </TabsContent>
                 <TabsContent value="admin_scaffolder">
                   <JobComments jobId={id!} channel="admin_scaffolder" jobTitle={job.title} recipientIds={chatRecipients.admin_scaffolder} />
                 </TabsContent>
