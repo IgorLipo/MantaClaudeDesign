@@ -62,6 +62,7 @@ export default function OwnerOnboarding() {
   const [lat, setLat] = useState(51.5074);
   const [lng, setLng] = useState(-0.1278);
   const [addressConfirmed, setAddressConfirmed] = useState(false);
+  const [serviceType, setServiceType] = useState("new_job");
 
   const [photos, setPhotos] = useState<
     Record<string, { url: string; storageUrl: string }>
