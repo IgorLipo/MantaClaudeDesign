@@ -672,6 +672,9 @@ export default function JobDetail() {
                   {navigator.share ? <Share2 className="h-3 w-3 mr-1" /> : <Printer className="h-3 w-3 mr-1" />}
                   {navigator.share ? "Share" : "Print / PDF"}
                 </Button>
+                <Button size="sm" variant="outline" className="text-xs" onClick={handleDownloadOwnerPdf}>
+                  <FileText className="h-3 w-3 mr-1" /> System Owner PDF
+                </Button>
               </div>
             </div>
           )}
@@ -1057,18 +1060,18 @@ export default function JobDetail() {
       {/* Assign Scaffolder Dialog */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Assign Scaffolder</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{hasScaffolder ? "Change Scaffolder" : "Assign Scaffolder"}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <Select value={selectedScaffolder} onValueChange={setSelectedScaffolder}>
               <SelectTrigger><SelectValue placeholder="Select scaffolder" /></SelectTrigger>
               <SelectContent>
-                {unassignedScaffolders.map((s) => (
+                {allScaffolders.map((s) => (
                   <SelectItem key={s.user_id} value={s.user_id}>{s.first_name} {s.last_name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Button className="w-full" disabled={!selectedScaffolder} onClick={assignScaffolder}>
-              Assign
+              {hasScaffolder ? "Change" : "Assign"}
             </Button>
           </div>
         </DialogContent>
@@ -1077,18 +1080,18 @@ export default function JobDetail() {
       {/* Assign Engineer Dialog */}
       <Dialog open={assignEngineerOpen} onOpenChange={setAssignEngineerOpen}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Assign Engineer</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{hasEngineer ? "Change Engineer" : "Assign Engineer"}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <Select value={selectedEngineer} onValueChange={setSelectedEngineer}>
               <SelectTrigger><SelectValue placeholder="Select engineer" /></SelectTrigger>
               <SelectContent>
-                {unassignedEngineers.map((e) => (
+                {allEngineers.map((e) => (
                   <SelectItem key={e.user_id} value={e.user_id}>{e.first_name} {e.last_name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Button className="w-full" disabled={!selectedEngineer} onClick={assignEngineer}>
-              Assign
+              {hasEngineer ? "Change" : "Assign"}
             </Button>
           </div>
         </DialogContent>
