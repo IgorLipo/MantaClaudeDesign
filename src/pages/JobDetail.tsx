@@ -463,6 +463,75 @@ export default function JobDetail() {
     }
   };
 
+  const handleDownloadOwnerPdf = async () => {
+    const { default: jsPDF } = await import("jspdf");
+    const doc = new jsPDF();
+    const pw = doc.internal.pageSize.getWidth();
+    let y = 20;
+
+    doc.setFillColor(249, 115, 22);
+    doc.rect(0, 0, pw, 35, "F");
+    doc.setTextColor(255);
+    doc.setFontSize(18);
+    doc.text("Manta Ray Energy", 15, 15);
+    doc.setFontSize(12);
+    doc.text("System Owner Application", 15, 25);
+
+    y = 45;
+    doc.setTextColor(0);
+    doc.setFontSize(14);
+    doc.text("Job Details", 15, y); y += 10;
+    doc.setFontSize(10);
+    const serviceLabels: Record<string, string> = { new_job: "New Job", service: "Service", full_site_replacement: "Full Site Replacement" };
+    doc.text(`Job Type: ${serviceLabels[(job as any).service_type] || (job as any).service_type || "N/A"}`, 15, y); y += 7;
+    doc.text(`Title: ${job.title}`, 15, y); y += 7;
+    doc.text(`Address: ${job.address}`, 15, y); y += 7;
+    if (job.lat && job.lng) {
+      doc.text(`Coordinates: ${job.lat.toFixed(6)}, ${job.lng.toFixed(6)}`, 15, y); y += 7;
+    }
+    doc.text(`Created: ${new Date(job.created_at).toLocaleDateString("en-GB")}`, 15, y); y += 7;
+    doc.text(`Status: ${statusMap[job.status] || job.status}`, 15, y); y += 12;
+
+    // Add photos
+    const jobPhotos = photos.filter(p => !new Set(assignments.filter(a => a.assignment_role === "engineer").map((a: any) => a.scaffolder_id)).has(p.uploader_id || "") && !new Set(assignments.filter(a => a.assignment_role !== "engineer").map((a: any) => a.scaffolder_id)).has(p.uploader_id || ""));
+    if (jobPhotos.length > 0) {
+      doc.setFontSize(14);
+      doc.text("Uploaded Photos", 15, y); y += 8;
+      for (const photo of jobPhotos) {
+        if (y > 240) { doc.addPage(); y = 20; }
+        try {
+          const img = await new Promise<string>((resolve, reject) => {
+            const imgEl = new Image();
+            imgEl.crossOrigin = "anonymous";
+            imgEl.onload = () => {
+              const c = document.createElement("canvas");
+              c.width = imgEl.width; c.height = imgEl.height;
+              c.getContext("2d")!.drawImage(imgEl, 0, 0);
+              resolve(c.toDataURL("image/jpeg"));
+            };
+            imgEl.onerror = reject;
+            imgEl.src = photo.url;
+          });
+          doc.addImage(img, "JPEG", 15, y, 80, 50);
+          y += 55;
+        } catch { y += 5; }
+      }
+    }
+
+    const filename = `system-owner-${job.title.replace(/\s+/g, "_")}.pdf`;
+    const blob = doc.output("blob");
+    const file = new File([blob], filename, { type: "application/pdf" });
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ title: "System Owner Application", files: [file] }).catch(() => {});
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    }
+  };
+
   const handleShareOrPrint = async () => {
     if (navigator.share) {
       try {
