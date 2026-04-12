@@ -104,12 +104,9 @@ export function SchedulingPanel({ job, role, onUpdate }: SchedulingPanelProps) {
       <CardContent className="space-y-4">
         {job.scheduled_date && (
           <div className="bg-secondary/50 rounded-xl p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="h-4 w-4 text-primary" />
-                <span className="font-medium">{format(new Date(job.scheduled_date), "EEE, dd MMM yyyy")}</span>
-              </div>
-            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Calendar className="h-4 w-4 text-primary" />
+              <span className="font-medium">{format(new Date(job.scheduled_date), "EEE, dd MMM yyyy")}</span>
             </div>
             {job.schedule_response === "confirmed" ? (
               <div className="flex items-center gap-1.5 text-xs text-success">
