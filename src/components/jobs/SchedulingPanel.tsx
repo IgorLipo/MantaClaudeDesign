@@ -26,7 +26,7 @@ export function SchedulingPanel({ job, role, onUpdate }: SchedulingPanelProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [date, setDate] = useState<Date | undefined>(job.scheduled_date ? new Date(job.scheduled_date) : undefined);
-  const [duration, setDuration] = useState(job.scheduled_duration || 4);
+  
   const [saving, setSaving] = useState(false);
   const [responseNotes, setResponseNotes] = useState("");
 
@@ -35,7 +35,7 @@ export function SchedulingPanel({ job, role, onUpdate }: SchedulingPanelProps) {
     setSaving(true);
     const { error } = await supabase.from("jobs").update({
       scheduled_date: date.toISOString(),
-      scheduled_duration: duration,
+      
       schedule_confirmed: false,
       schedule_response: null,
       updated_at: new Date().toISOString(),
