@@ -231,7 +231,14 @@ export default function JobDetail() {
     const hash = location.hash;
     if (hash === "#photos") setPhotosOpen(true);
     if (hash === "#quotes") setQuotesOpen(true);
-  }, [location.hash]);
+    // Show success message when returning from site report submission
+    if (location.state?.reportSubmitted) {
+      toast({ title: "✅ Site report submitted successfully" });
+      // Clear state to prevent showing again on refresh
+      window.history.replaceState({}, document.title);
+      fetchAll(); // refresh to get latest site report status
+    }
+  }, [location.hash, location.state]);
 
   // Removed: ensureEngineersAssigned — engineers are now assigned manually by admin only
 
