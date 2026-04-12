@@ -617,22 +617,43 @@ export default function JobDetail() {
             </div>
           )}
 
-          {/* Assigned scaffolders */}
+          {/* Assigned team */}
           {assignments.length > 0 && role !== "owner" && (
-            <div className="pt-3 border-t border-border">
-              <p className="text-xs text-muted-foreground mb-2">Assigned</p>
-              <div className="flex flex-wrap gap-1">
-                {assignments.map((a) => {
-                  const s = scaffolders.find((sc) => sc.user_id === a.scaffolder_id);
-                  return (
-                    <Badge key={a.id} variant="secondary" className="text-xs">
-                      <HardHat className="h-3 w-3 mr-1" />
-                      {s ? `${s.first_name} ${s.last_name}` : "Unknown"}
-                      {a.assignment_role === "engineer" && " (Engineer)"}
-                    </Badge>
-                  );
-                })}
-              </div>
+            <div className="pt-3 border-t border-border space-y-1.5">
+              {assignments.filter(a => a.assignment_role !== "engineer").map((a) => {
+                const p = profiles[a.scaffolder_id];
+                return (
+                  <div key={a.id} className="flex items-center gap-2 text-sm">
+                    <HardHat className="h-4 w-4 text-primary" />
+                    <span className="font-medium text-foreground">Scaffolder — {p ? `${p.first_name} ${p.last_name}` : "Unassigned"}</span>
+                  </div>
+                );
+              })}
+              {assignments.filter(a => a.assignment_role === "engineer").map((a) => {
+                const p = profiles[a.scaffolder_id];
+                return (
+                  <div key={a.id} className="flex items-center gap-2 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                    <span className="font-medium text-foreground">Engineer — {p ? `${p.first_name} ${p.last_name}` : "Unassigned"}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Admin: Assign Scaffolder & Engineer below map */}
+          {role === "admin" && (
+            <div className="pt-3 border-t border-border flex flex-wrap gap-2">
+              {unassignedScaffolders.length > 0 && (
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => setAssignOpen(true)}>
+                  <UserPlus className="h-3 w-3 mr-1" /> Assign Scaffolder
+                </Button>
+              )}
+              {unassignedEngineers.length > 0 && (
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => setAssignEngineerOpen(true)}>
+                  <UserPlus className="h-3 w-3 mr-1" /> Assign Engineer
+                </Button>
+              )}
             </div>
           )}
 
