@@ -507,12 +507,12 @@ export default function OwnerOnboarding() {
                       </div>
                     ) : (
                       <>
-                        <Camera className="h-10 w-10 text-muted-foreground/50 mx-auto mb-2" />
+                        <Upload className="h-10 w-10 text-muted-foreground/50 mx-auto mb-2" />
                         <p className="text-sm font-medium text-foreground">
-                          Take or select photo
+                          Upload photo or file
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Tap to open camera or gallery
+                          Camera, gallery, or PDF
                         </p>
                       </>
                     )}
