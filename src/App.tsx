@@ -60,7 +60,7 @@ function AppRoutes() {
         <Route path="/jobs/:id" element={<ProtectedRoute><JobDetail /></ProtectedRoute>} />
         <Route path="/jobs/:id/report" element={<ProtectedRoute><SiteReport /></ProtectedRoute>} />
         <Route path="/my-job" element={<ProtectedRoute roles={["owner"]}><OwnerJobHome /></ProtectedRoute>} />
-        <Route path="/new-job" element={<ProtectedRoute roles={["owner"]}><OwnerOnboarding /></ProtectedRoute>} />
+        <Route path="/new-job" element={<ProtectedRoute roles={["owner", "admin"]}><OwnerOnboarding /></ProtectedRoute>} />
         <Route path="/my-quotes" element={<ProtectedRoute roles={["scaffolder"]}><MyQuotes /></ProtectedRoute>} />
         <Route path="/site-reports" element={<ProtectedRoute roles={["engineer"]}><MySiteReports /></ProtectedRoute>} />
         <Route path="/scaffolders" element={<ProtectedRoute roles={["admin"]}><Scaffolders /></ProtectedRoute>} />
