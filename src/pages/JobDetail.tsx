@@ -599,16 +599,38 @@ export default function JobDetail() {
   };
 
   const handleShareOrPrint = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Job: ${job.title}`,
-          text: `Job report for ${job.title} at ${job.address}`,
-          url: window.location.href,
-        });
-      } catch { /* cancelled */ }
-    } else {
-      window.print();
+    if (!id) return;
+    toast({ title: "Generating PDF..." });
+    try {
+      // Fetch site report data for PDF generation
+      const { data: report } = await (supabase as any)
+        .from("site_reports").select("*").eq("job_id", id).maybeSingle();
+      if (!report || !report.report_data) {
+        toast({ title: "No site report found", variant: "destructive" });
+        return;
+      }
+      const { generateSiteReportPdf } = await import("@/components/site-report/generateSiteReportPdf");
+      const reportData = report.report_data;
+      // Ensure evidence_photos from report_photos
+      if (report.report_photos?.evidence_photos) {
+        reportData.evidence_photos = report.report_photos.evidence_photos;
+      }
+      if (!reportData.materials) reportData.materials = [];
+      const blob = await generateSiteReportPdf(reportData, id);
+      const filename = `site-report-${id.slice(0, 8)}.pdf`;
+      const file = new File([blob], filename, { type: "application/pdf" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: "Site Report", files: [file] }).catch(() => {});
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+        toast({ title: "PDF downloaded" });
+      }
+    } catch (err: any) {
+      toast({ title: "PDF generation failed", description: err.message, variant: "destructive" });
     }
   };
 
