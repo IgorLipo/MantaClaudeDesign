@@ -367,7 +367,8 @@ export default function JobDetail() {
     if (isNaN(amount)) return;
     await supabase.from("quotes").update({
       review_decision: "countered", reviewed_by: user.id, reviewed_at: new Date().toISOString(),
-    }).eq("id", counterOpen);
+      counter_amount: amount, counter_notes: counterNotes || null,
+    } as any).eq("id", counterOpen);
     logAudit(user.id, "quote_countered", "quote", counterOpen, { counter_amount: amount, notes: counterNotes });
     const quote = quotes.find((q) => q.id === counterOpen);
     if (quote) notifyQuoteDecision(quote.scaffolder_id, job.title, `countered at £${amount.toLocaleString()}`, id!);
