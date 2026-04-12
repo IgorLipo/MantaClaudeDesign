@@ -40,7 +40,7 @@ function DashboardStats({ reports }: { reports: SavedReport[] }) {
   const stats = [
     { label: "Total Reports", value: totalReports, icon: FileText, color: "text-accent" },
     { label: "Total Modules", value: totalModules, icon: Layers, color: "text-primary" },
-    { label: "Updated Today", value: recentlyUpdated, icon: TrendingUp, color: "text-green-500" },
+    { label: "Updated Today", value: recentlyUpdated, icon: TrendingUp, color: "text-primary" },
   ];
 
   return (

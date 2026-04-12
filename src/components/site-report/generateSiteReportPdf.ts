@@ -15,7 +15,7 @@ export async function generateSiteReportPdf(data: ReportFormData, jobId: string)
   const CW = W - ML - MR; // content width
   let y = 15;
 
-  const BRAND = [5, 150, 105] as const; // emerald-ish
+  const BRAND = [249, 115, 22] as const; // orange #F97316
   const GRAY = [100, 100, 100] as const;
   const BLACK = [26, 26, 26] as const;
   const LIGHT_BG = [245, 245, 245] as const;

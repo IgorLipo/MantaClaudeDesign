@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => ({
         name: "Manta Ray Energy",
         short_name: "MantaRay",
         description: "UK solar installation operations platform",
-        theme_color: "#059669",
+        theme_color: "#F97316",
         background_color: "#0f172a",
         display: "standalone",
         orientation: "portrait",

@@ -310,20 +310,7 @@ export default function OwnerOnboarding() {
       notifyPhotoUploaded(jobId, title, adminRoles.map((r) => r.user_id));
     }
 
-    // Generate and download onboarding PDF
-    try {
-      const pdfBlob = await generateOnboardingPdf();
-      const file = new File([pdfBlob], `onboarding-${jobId.slice(0, 8)}.pdf`, { type: "application/pdf" });
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ title: "Onboarding Application", files: [file] }).catch(() => {});
-      } else {
-        const url = URL.createObjectURL(pdfBlob);
-        const a = document.createElement("a");
-        a.href = url; a.download = file.name;
-        document.body.appendChild(a); a.click();
-        document.body.removeChild(a); URL.revokeObjectURL(url);
-      }
-    } catch { /* PDF gen is best-effort */ }
+    // PDF is no longer auto-downloaded; Admin can download it from the job view
 
     toast({ title: "Application submitted!" });
     setSubmitting(false);

@@ -148,9 +148,6 @@ export function SchedulingPanel({ job, role, onUpdate }: SchedulingPanelProps) {
             ) : (
               <div className="text-xs text-muted-foreground">Awaiting owner confirmation</div>
             )}
-            <Button size="sm" variant="outline" className="w-full text-xs" onClick={downloadICS}>
-              <Download className="h-3 w-3 mr-1" /> Download Calendar (.ics)
-            </Button>
           </div>
         )}
 
