@@ -436,7 +436,7 @@ export default function JobDetail() {
     fetchAll();
   };
 
-
+  const handleEditJob = async () => {
     if (!id || !user) return;
     setEditSubmitting(true);
     const { error } = await supabase.from("jobs").update({
