@@ -313,7 +313,9 @@ export default function JobDetail() {
     logAudit(user.id, "photo_upload", "photo", id);
     notifyPhotoUploaded(id, job.title, adminIds);
     setUploading(false);
-    fetchAll();
+    // Re-fetch photos only, preserve current job state
+    const { data: freshPhotos } = await supabase.from("photos").select("*").eq("job_id", id).order("created_at", { ascending: false });
+    if (freshPhotos) setPhotos(freshPhotos as Photo[]);
   };
 
   const reviewPhoto = async (photoId: string, action: string, comment?: string) => {
@@ -597,16 +599,38 @@ export default function JobDetail() {
   };
 
   const handleShareOrPrint = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Job: ${job.title}`,
-          text: `Job report for ${job.title} at ${job.address}`,
-          url: window.location.href,
-        });
-      } catch { /* cancelled */ }
-    } else {
-      window.print();
+    if (!id) return;
+    toast({ title: "Generating PDF..." });
+    try {
+      // Fetch site report data for PDF generation
+      const { data: report } = await (supabase as any)
+        .from("site_reports").select("*").eq("job_id", id).maybeSingle();
+      if (!report || !report.report_data) {
+        toast({ title: "No site report found", variant: "destructive" });
+        return;
+      }
+      const { generateSiteReportPdf } = await import("@/components/site-report/generateSiteReportPdf");
+      const reportData = report.report_data;
+      // Ensure evidence_photos from report_photos
+      if (report.report_photos?.evidence_photos) {
+        reportData.evidence_photos = report.report_photos.evidence_photos;
+      }
+      if (!reportData.materials) reportData.materials = [];
+      const blob = await generateSiteReportPdf(reportData, id);
+      const filename = `site-report-${id.slice(0, 8)}.pdf`;
+      const file = new File([blob], filename, { type: "application/pdf" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: "Site Report", files: [file] }).catch(() => {});
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+        toast({ title: "PDF downloaded" });
+      }
+    } catch (err: any) {
+      toast({ title: "PDF generation failed", description: err.message, variant: "destructive" });
     }
   };
 
@@ -935,7 +959,7 @@ export default function JobDetail() {
               {(role === "owner" || role === "admin") && (
                 <div className="mb-3">
                   <label className="cursor-pointer">
-                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
+                    <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
                     <Button size="sm" variant="outline" className="text-xs pointer-events-none" asChild>
                       <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Photo"}</span>
                     </Button>
@@ -992,7 +1016,7 @@ export default function JobDetail() {
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Before Scaffolding</p>
                 {role === "scaffolder" && (
                   <label className="cursor-pointer">
-                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhotoUpload(e, "before")} disabled={uploading} />
+                    <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={(e) => handlePhotoUpload(e, "before")} disabled={uploading} />
                     <Button size="sm" variant="outline" className="text-xs h-7 pointer-events-none" asChild>
                       <span><Camera className="h-3 w-3 mr-1" /> Upload Before</span>
                     </Button>
@@ -1016,7 +1040,7 @@ export default function JobDetail() {
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">After Scaffolding</p>
                 {role === "scaffolder" && (
                   <label className="cursor-pointer">
-                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhotoUpload(e, "after")} disabled={uploading} />
+                    <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={(e) => handlePhotoUpload(e, "after")} disabled={uploading} />
                     <Button size="sm" variant="outline" className="text-xs h-7 pointer-events-none" asChild>
                       <span><Camera className="h-3 w-3 mr-1" /> Upload After</span>
                     </Button>
@@ -1054,7 +1078,7 @@ export default function JobDetail() {
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Before Roof Work</p>
                 {role === "engineer" && (
                   <label className="cursor-pointer">
-                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhotoUpload(e, "before")} disabled={uploading} />
+                    <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={(e) => handlePhotoUpload(e, "before")} disabled={uploading} />
                     <Button size="sm" variant="outline" className="text-xs h-7 pointer-events-none" asChild>
                       <span><Camera className="h-3 w-3 mr-1" /> Upload Before</span>
                     </Button>
@@ -1078,7 +1102,7 @@ export default function JobDetail() {
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">After Roof Work</p>
                 {role === "engineer" && (
                   <label className="cursor-pointer">
-                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhotoUpload(e, "after")} disabled={uploading} />
+                    <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={(e) => handlePhotoUpload(e, "after")} disabled={uploading} />
                     <Button size="sm" variant="outline" className="text-xs h-7 pointer-events-none" asChild>
                       <span><Camera className="h-3 w-3 mr-1" /> Upload After</span>
                     </Button>
