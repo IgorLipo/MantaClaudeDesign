@@ -492,7 +492,10 @@ export default function JobDetail() {
 
   const available = transitions[job.status] || [];
   const assignedIds = assignments.map((a) => a.scaffolder_id);
-  const unassignedScaffolders = scaffolders.filter((s) => !assignedIds.includes(s.user_id));
+  const assignedScaffolderIds = assignments.filter(a => a.assignment_role !== "engineer").map(a => a.scaffolder_id);
+  const assignedEngineerIds = assignments.filter(a => a.assignment_role === "engineer").map(a => a.scaffolder_id);
+  const unassignedScaffolders = scaffolders.filter((s) => !assignedScaffolderIds.includes(s.user_id));
+  const unassignedEngineers = engineers.filter((e) => !assignedEngineerIds.includes(e.user_id));
   const showScheduling = ["scheduled", "in_progress", "quote_submitted", "negotiating"].includes(job.status) || job.scheduled_date;
   const showSiteReport = ["in_progress", "completed"].includes(job.status);
   const canEdit = role === "admin" || (role === "owner" && job.owner_id === user?.id);
