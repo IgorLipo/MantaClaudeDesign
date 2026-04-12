@@ -947,27 +947,27 @@ export default function JobDetail() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <HardHat className="h-4 w-4" /> Scaffolder Photos
-              <span className="text-xs font-normal text-muted-foreground">({scaffolderPhotos.length})</span>
+              <span className="text-xs font-normal text-muted-foreground">({scaffolderBeforePhotos.length + scaffolderAfterPhotos.length})</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {role === "scaffolder" && (
-              <div className="mb-3">
-                <label className="cursor-pointer">
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
-                  <Button size="sm" variant="outline" className="text-xs pointer-events-none" asChild>
-                    <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Photo"}</span>
-                  </Button>
-                </label>
+            <div className="border border-border rounded-xl p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Before Scaffolding</p>
+                {role === "scaffolder" && (
+                  <label className="cursor-pointer">
+                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhotoUpload(e, "before")} disabled={uploading} />
+                    <Button size="sm" variant="outline" className="text-xs h-7 pointer-events-none" asChild>
+                      <span><Camera className="h-3 w-3 mr-1" /> Upload Before</span>
+                    </Button>
+                  </label>
+                )}
               </div>
-            )}
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Before Scaffolding</p>
-              {scaffolderPhotos.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-3">No photos yet</p>
+              {scaffolderBeforePhotos.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-3">No before photos yet</p>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {scaffolderPhotos.slice(0, Math.ceil(scaffolderPhotos.length / 2)).map((photo) => (
+                  {scaffolderBeforePhotos.map((photo) => (
                     <div key={photo.id} className="relative rounded-xl overflow-hidden border border-border cursor-pointer" onClick={() => setFullscreenPhoto(photo.url)}>
                       <img src={photo.url} alt="Before scaffolding" className="w-full h-32 object-cover" />
                     </div>
@@ -975,13 +975,23 @@ export default function JobDetail() {
                 </div>
               )}
             </div>
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">After Scaffolding</p>
-              {scaffolderPhotos.length <= 1 ? (
-                <p className="text-sm text-muted-foreground text-center py-3">No photos yet</p>
+            <div className="border border-border rounded-xl p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">After Scaffolding</p>
+                {role === "scaffolder" && (
+                  <label className="cursor-pointer">
+                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhotoUpload(e, "after")} disabled={uploading} />
+                    <Button size="sm" variant="outline" className="text-xs h-7 pointer-events-none" asChild>
+                      <span><Camera className="h-3 w-3 mr-1" /> Upload After</span>
+                    </Button>
+                  </label>
+                )}
+              </div>
+              {scaffolderAfterPhotos.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-3">No after photos yet</p>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {scaffolderPhotos.slice(Math.ceil(scaffolderPhotos.length / 2)).map((photo) => (
+                  {scaffolderAfterPhotos.map((photo) => (
                     <div key={photo.id} className="relative rounded-xl overflow-hidden border border-border cursor-pointer" onClick={() => setFullscreenPhoto(photo.url)}>
                       <img src={photo.url} alt="After scaffolding" className="w-full h-32 object-cover" />
                     </div>
