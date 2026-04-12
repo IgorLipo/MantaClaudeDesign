@@ -488,6 +488,40 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      engineer_update_job_status: {
+        Args: {
+          _job_id: string
+          _new_status: Database["public"]["Enums"]["job_status"]
+        }
+        Returns: {
+          address: string
+          completion_date: string | null
+          completion_notes: string | null
+          created_at: string
+          description: string | null
+          final_price: number | null
+          id: string
+          lat: number | null
+          lng: number | null
+          owner_id: string | null
+          region_id: string | null
+          schedule_confirmed: boolean | null
+          schedule_notes: string | null
+          schedule_response: string | null
+          scheduled_date: string | null
+          scheduled_duration: number | null
+          service_type: string | null
+          status: Database["public"]["Enums"]["job_status"]
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "jobs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
