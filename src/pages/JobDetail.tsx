@@ -259,7 +259,7 @@ export default function JobDetail() {
     }
   };
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, category: string = "general") => {
     const file = e.target.files?.[0];
     if (!file || !id || !user) return;
     setUploading(true);
@@ -272,7 +272,7 @@ export default function JobDetail() {
       return;
     }
     const { data: urlData } = supabase.storage.from("job-photos").getPublicUrl(path);
-    await supabase.from("photos").insert({ job_id: id, uploader_id: user.id, url: urlData.publicUrl, review_status: "pending" });
+    await supabase.from("photos").insert({ job_id: id, uploader_id: user.id, url: urlData.publicUrl, review_status: "pending", photo_category: category } as any);
     toast({ title: "Photo uploaded" });
     logAudit(user.id, "photo_upload", "photo", id);
     notifyPhotoUploaded(id, job.title, adminIds);
@@ -406,13 +406,17 @@ export default function JobDetail() {
   const handleScaffolderRespondToCounter = async (quoteId: string, response: "accepted" | "rejected", newAmount?: number, newNotes?: string) => {
     if (!user || !id) return;
     if (response === "accepted") {
-      // Scaffolder accepts the counter — mark the quote as accepted
+      // Scaffolder accepts the counter — update quote amount to counter_amount and mark accepted
+      const quote = quotes.find(q => q.id === quoteId);
+      const acceptedAmount = quote?.counter_amount || quote?.amount || 0;
       await supabase.from("quotes").update({
-        review_decision: "accepted", reviewed_at: new Date().toISOString(),
+        review_decision: "accepted",
+        reviewed_at: new Date().toISOString(),
+        amount: acceptedAmount,
       } as any).eq("id", quoteId);
-      toast({ title: "Counter offer accepted" });
-      logAudit(user.id, "counter_accepted", "quote", quoteId);
-      notifyQuoteSubmitted(id, job.title, 0); // notify admin
+      toast({ title: `Counter offer of £${Number(acceptedAmount).toLocaleString()} accepted` });
+      logAudit(user.id, "counter_accepted", "quote", quoteId, { accepted_amount: acceptedAmount });
+      notifyQuoteSubmitted(id, job.title, acceptedAmount);
     } else {
       // Scaffolder declines — submit a new quote with updated amount
       const amount = newAmount || 0;
