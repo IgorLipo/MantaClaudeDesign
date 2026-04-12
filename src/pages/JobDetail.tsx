@@ -496,9 +496,33 @@ export default function JobDetail() {
     doc.text(`Created: ${new Date(job.created_at).toLocaleDateString("en-GB")}`, 15, y); y += 7;
     doc.text(`Status: ${statusMap[job.status] || job.status}`, 15, y); y += 12;
 
+    // Add static map image
+    if (mapsKey && job.lat && job.lng) {
+      try {
+        const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${job.lat},${job.lng}&zoom=18&size=600x300&maptype=satellite&markers=color:red%7C${job.lat},${job.lng}&key=${mapsKey}`;
+        const mapImg = await new Promise<string>((resolve, reject) => {
+          const imgEl = new Image();
+          imgEl.crossOrigin = "anonymous";
+          imgEl.onload = () => {
+            const c = document.createElement("canvas");
+            c.width = imgEl.width; c.height = imgEl.height;
+            c.getContext("2d")!.drawImage(imgEl, 0, 0);
+            resolve(c.toDataURL("image/jpeg"));
+          };
+          imgEl.onerror = reject;
+          imgEl.src = mapUrl;
+        });
+        doc.setFontSize(14);
+        doc.text("Property Location", 15, y); y += 8;
+        doc.addImage(mapImg, "JPEG", 15, y, pw - 30, 60);
+        y += 65;
+      } catch { /* map image failed, skip */ }
+    }
+
     // Add photos
     const jobPhotos = photos.filter(p => !new Set(assignments.filter(a => a.assignment_role === "engineer").map((a: any) => a.scaffolder_id)).has(p.uploader_id || "") && !new Set(assignments.filter(a => a.assignment_role !== "engineer").map((a: any) => a.scaffolder_id)).has(p.uploader_id || ""));
     if (jobPhotos.length > 0) {
+      if (y > 200) { doc.addPage(); y = 20; }
       doc.setFontSize(14);
       doc.text("Uploaded Photos", 15, y); y += 8;
       for (const photo of jobPhotos) {
