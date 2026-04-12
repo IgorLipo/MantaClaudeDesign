@@ -140,33 +140,9 @@ export default function Jobs() {
             </Button>
           )}
           {(role === "admin" || role === "owner") && (
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm"><Plus className="h-4 w-4 mr-1" /> New Job</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Create New Job</DialogTitle></DialogHeader>
-                <form onSubmit={handleCreate} className="space-y-3">
-                  <Input placeholder="Job title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-                  <Input placeholder="Full address (street, city, postcode)" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} required />
-                  <Input placeholder="Description (optional)" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Service Type</Label>
-                    <Select value={form.service_type} onValueChange={(v) => setForm({ ...form, service_type: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="new_job">New Job</SelectItem>
-                        <SelectItem value="service">Service</SelectItem>
-                        <SelectItem value="full_site_replacement">Full Site Replacement</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button type="submit" className="w-full" disabled={submitting}>
-                    {submitting ? "Creating..." : "Create Job"}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <Button size="sm" onClick={() => navigate("/new-job")}>
+              <Plus className="h-4 w-4 mr-1" /> New Job
+            </Button>
           )}
         </div>
       </div>

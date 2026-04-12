@@ -54,8 +54,9 @@ const PHOTO_STEPS = [
 
 export default function OwnerOnboarding() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { toast } = useToast();
+  const isAdmin = role === "admin";
   const jobId = useRef(crypto.randomUUID()).current;
 
   const [step, setStep] = useState(0);
@@ -274,10 +275,10 @@ export default function OwnerOnboarding() {
       id: jobId,
       title,
       address,
-      owner_id: user.id,
+      owner_id: isAdmin ? null : user.id,
       lat,
       lng,
-      status: "submitted" as any,
+      status: (isAdmin ? "draft" : "submitted") as any,
       service_type: serviceType,
     } as any);
     if (jobError) {
@@ -465,8 +466,7 @@ export default function OwnerOnboarding() {
                   <label className="absolute bottom-2 right-2 cursor-pointer">
                     <input
                       type="file"
-                      accept="image/*"
-                      capture="environment"
+                      accept="image/*,.pdf,application/pdf"
                       className="hidden"
                       onChange={(e) => {
                         const f = e.target.files?.[0];
@@ -487,8 +487,7 @@ export default function OwnerOnboarding() {
                 <label className="cursor-pointer block">
                   <input
                     type="file"
-                    accept="image/*"
-                    capture="environment"
+                    accept="image/*,.pdf,application/pdf"
                     className="hidden"
                     onChange={(e) => {
                       const f = e.target.files?.[0];

@@ -280,7 +280,7 @@ export default function SiteReportForm({ data, onChange, jobId, userId }: Props)
             ))}
             <label className="cursor-pointer">
               <input
-                type="file" accept="image/*" capture="environment" className="hidden"
+                type="file" accept="image/*,.pdf,application/pdf" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleEvidenceUpload(f); }}
                 disabled={uploadingEvidence}
               />
