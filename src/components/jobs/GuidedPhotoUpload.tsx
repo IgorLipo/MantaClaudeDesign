@@ -185,7 +185,7 @@ export function GuidedPhotoUpload({ jobId, onComplete }: GuidedPhotoUploadProps)
                 <CheckCircle2 className="h-3 w-3" /> Uploaded
               </div>
               <label className="absolute bottom-2 right-2 cursor-pointer">
-                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleUpload} />
+              <input type="file" accept="image/*" className="hidden" onChange={handleUpload} />
                 <Button size="sm" variant="secondary" className="text-xs" asChild>
                   <span>Replace</span>
                 </Button>
@@ -193,7 +193,7 @@ export function GuidedPhotoUpload({ jobId, onComplete }: GuidedPhotoUploadProps)
             </div>
           ) : (
             <label className="cursor-pointer block">
-              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleUpload} disabled={uploading} />
+              <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading} />
               <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 hover:bg-primary/5 transition-colors">
                 {uploading ? (
                   <div className="animate-pulse">
