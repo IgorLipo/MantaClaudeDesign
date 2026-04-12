@@ -242,6 +242,7 @@ export type Database = {
           created_at: string
           id: string
           job_id: string
+          photo_category: string
           review_status: Database["public"]["Enums"]["review_status"]
           uploader_id: string | null
           url: string
@@ -250,6 +251,7 @@ export type Database = {
           created_at?: string
           id?: string
           job_id: string
+          photo_category?: string
           review_status?: Database["public"]["Enums"]["review_status"]
           uploader_id?: string | null
           url: string
@@ -258,6 +260,7 @@ export type Database = {
           created_at?: string
           id?: string
           job_id?: string
+          photo_category?: string
           review_status?: Database["public"]["Enums"]["review_status"]
           uploader_id?: string | null
           url?: string
