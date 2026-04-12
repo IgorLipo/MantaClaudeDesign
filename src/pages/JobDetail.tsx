@@ -555,8 +555,6 @@ export default function JobDetail() {
   const assignedEngineerIds = assignments.filter(a => a.assignment_role === "engineer").map(a => a.scaffolder_id);
   const hasScaffolder = assignedScaffolderIds.length > 0;
   const hasEngineer = assignedEngineerIds.length > 0;
-  const unassignedScaffolders = scaffolders.filter((s) => !assignedScaffolderIds.includes(s.user_id));
-  const unassignedEngineers = engineers.filter((e) => !assignedEngineerIds.includes(e.user_id));
   const allScaffolders = scaffolders;
   const allEngineers = engineers;
   const showScheduling = ["scheduled", "in_progress", "quote_submitted", "negotiating"].includes(job.status) || job.scheduled_date;
