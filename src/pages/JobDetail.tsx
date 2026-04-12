@@ -243,6 +243,8 @@ export default function JobDetail() {
   // Removed: ensureEngineersAssigned — engineers are now assigned manually by admin only
 
   const updateStatus = async (newStatus: string) => {
+    if (!id) return;
+
     const oldStatus = job.status;
 
     // Engineer: require site report before completing
@@ -253,16 +255,43 @@ export default function JobDetail() {
       }
     }
 
-    const { error } = await supabase.from("jobs").update({ status: newStatus as any, updated_at: new Date().toISOString() }).eq("id", id);
+    let updatedJob = null;
+    let error = null;
+
+    if (role === "engineer") {
+      const response = await (supabase as any).rpc("engineer_update_job_status", {
+        _job_id: id,
+        _new_status: newStatus,
+      });
+
+      error = response.error;
+      updatedJob = Array.isArray(response.data) ? response.data[0] : response.data;
+    } else {
+      const response = await supabase
+        .from("jobs")
+        .update({ status: newStatus as any, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .select()
+        .single();
+
+      error = response.error;
+      updatedJob = response.data;
+    }
+
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      setJob({ ...job, status: newStatus });
+      if (updatedJob) {
+        setJob(updatedJob);
+      } else {
+        setJob((prev: any) => prev ? { ...prev, status: newStatus, updated_at: new Date().toISOString() } : prev);
+      }
+
       toast({ title: `Status → ${statusMap[newStatus]}` });
       logAudit(user?.id, "status_change", "job", id, { from: oldStatus, to: newStatus });
       const assignedIds = assignments.map((a) => a.scaffolder_id);
       notifyStatusChange(id!, job.title, newStatus, job.owner_id, assignedIds);
-      // Engineers are assigned manually by admin only
+      await fetchAll();
     }
   };
 
