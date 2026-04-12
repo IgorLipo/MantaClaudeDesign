@@ -174,7 +174,7 @@ export default function SiteReport() {
       logAudit(user.id, "site_report_submitted", "site_report", rid, { job_id: jobId });
       notifySiteReportSubmitted(jobId, `Job ${jobId?.slice(0, 8)}`, user.id);
       toast({ title: "✅ Site report submitted successfully" });
-      navigate(`/jobs/${jobId}`);
+      navigate(`/jobs/${jobId}`, { state: { reportSubmitted: true } });
     }
     setSubmitting(false);
   };
