@@ -233,23 +233,7 @@ export default function JobDetail() {
     if (hash === "#quotes") setQuotesOpen(true);
   }, [location.hash]);
 
-  const ensureEngineersAssigned = async () => {
-    if (!id || role !== "admin" || !user?.id) return;
-    const { data: engRoles } = await supabase.from("user_roles").select("user_id").eq("role", "engineer");
-    if (!engRoles?.length) return;
-    const { data: existing } = await (supabase as any).from("job_assignments").select("scaffolder_id").eq("job_id", id).eq("assignment_role", "engineer");
-    const existingIds = new Set((existing || []).map((a: any) => a.scaffolder_id));
-    const toInsert = engRoles.filter((e) => !existingIds.has(e.user_id)).map((e) => ({
-      job_id: id, scaffolder_id: e.user_id, assigned_by: user.id, assignment_role: "engineer",
-    }));
-    if (toInsert.length === 0) return;
-    const { error } = await (supabase as any).from("job_assignments").insert(toInsert);
-    if (error) return;
-    for (const a of toInsert) {
-      notifyEngineerAssigned(a.scaffolder_id, job.title, id);
-      logAudit(user.id, "engineer_assigned", "assignment", id, { engineer_id: a.scaffolder_id });
-    }
-  };
+  // Removed: ensureEngineersAssigned — engineers are now assigned manually by admin only
 
   const updateStatus = async (newStatus: string) => {
     const oldStatus = job.status;
@@ -271,9 +255,7 @@ export default function JobDetail() {
       logAudit(user?.id, "status_change", "job", id, { from: oldStatus, to: newStatus });
       const assignedIds = assignments.map((a) => a.scaffolder_id);
       notifyStatusChange(id!, job.title, newStatus, job.owner_id, assignedIds);
-      if (role === "admin" && ["photo_review", "quote_pending"].includes(newStatus)) {
-        await ensureEngineersAssigned();
-      }
+      // Engineers are assigned manually by admin only
     }
   };
 
@@ -322,9 +304,7 @@ export default function JobDetail() {
 
     toast({ title: action === "approved" ? "Photo approved" : "Feedback sent to owner" });
     logAudit(user?.id, `photo_${action}`, "photo", photoId, comment ? { comment } : undefined);
-    if (action === "approved" && role === "admin") {
-      await ensureEngineersAssigned();
-    }
+      // Engineers are assigned manually by admin only
     fetchAll();
   };
 
