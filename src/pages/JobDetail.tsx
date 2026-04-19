@@ -1316,26 +1316,6 @@ export default function JobDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* Assign Engineer Dialog */}
-      <Dialog open={assignEngineerOpen} onOpenChange={setAssignEngineerOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>{hasEngineer ? "Change Engineer" : "Assign Engineer"}</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            <Select value={selectedEngineer} onValueChange={setSelectedEngineer}>
-              <SelectTrigger><SelectValue placeholder="Select engineer" /></SelectTrigger>
-              <SelectContent>
-                {allEngineers.map((e) => (
-                  <SelectItem key={e.user_id} value={e.user_id}>{e.first_name} {e.last_name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button className="w-full" disabled={!selectedEngineer} onClick={assignEngineer}>
-              {hasEngineer ? "Change" : "Assign"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* Edit Job Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
