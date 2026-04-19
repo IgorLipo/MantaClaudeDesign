@@ -56,6 +56,8 @@ const transitions: Record<string, string[]> = {
   negotiating: ["scheduled", "cancelled"],
   scheduled: ["in_progress", "cancelled"],
   in_progress: ["completed", "cancelled"],
+  // Admin may revive a cancelled job back to any earlier state via edit dialog.
+  cancelled: ["draft", "submitted", "photo_review", "quote_pending", "quote_submitted", "negotiating", "scheduled", "in_progress"],
 };
 
 // Owner-facing status messages
@@ -140,7 +142,7 @@ export default function JobDetail() {
   const [photosOpen, setPhotosOpen] = useState(true);
   const [quotesOpen, setQuotesOpen] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ title: "", description: "", address: "" });
+  const [editForm, setEditForm] = useState({ title: "", description: "", address: "", status: "" });
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [counterOpen, setCounterOpen] = useState<string | null>(null);
   const [counterAmount, setCounterAmount] = useState("");
@@ -150,6 +152,18 @@ export default function JobDetail() {
   const [chatTab, setChatTab] = useState("admin_scaffolder");
   const [profiles, setProfiles] = useState<Record<string, Scaffolder>>({});
   const [fullscreenPhoto, setFullscreenPhoto] = useState<string | null>(null);
+  // Runtime probe: only show the Share button when the browser can actually
+  // share PDF files (mobile Safari/Chrome). Desktop Chrome has navigator.share
+  // but no file support, so we fall back to plain Print/Download there.
+  const [canShareFiles, setCanShareFiles] = useState(false);
+  useEffect(() => {
+    try {
+      const probe = new File([new Blob(["x"], { type: "application/pdf" })], "probe.pdf", { type: "application/pdf" });
+      setCanShareFiles(!!(navigator.canShare && navigator.canShare({ files: [probe] })));
+    } catch {
+      setCanShareFiles(false);
+    }
+  }, []);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [siteReport, setSiteReport] = useState<any>(null);
@@ -480,7 +494,7 @@ export default function JobDetail() {
   };
 
   const handleEditJob = async () => {
-    if (!id || !user) return;
+    if (!id || !user || !job) return;
     setEditSubmitting(true);
     const { error } = await supabase.from("jobs").update({
       title: editForm.title, description: editForm.description,
@@ -488,13 +502,22 @@ export default function JobDetail() {
     }).eq("id", id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+      setEditSubmitting(false);
+      return;
+    }
+    logAudit(user.id, "job_edited", "job", id, {
+      title: editForm.title, description: editForm.description, address: editForm.address,
+    });
+    notifyJobEdited(id, editForm.title, user.id);
+
+    // Admin may change status from the edit dialog (useful to revive cancelled jobs).
+    if (role === "admin" && editForm.status && editForm.status !== job.status) {
+      await updateStatus(editForm.status);
     } else {
       toast({ title: "Job updated" });
-      logAudit(user.id, "job_edited", "job", id, editForm);
-      notifyJobEdited(id, editForm.title, user.id);
-      setEditOpen(false);
-      fetchAll();
+      await fetchAll();
     }
+    setEditOpen(false);
     setEditSubmitting(false);
   };
 
@@ -748,7 +771,7 @@ export default function JobDetail() {
               )}
               {canEdit && role !== "owner" && (
                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => {
-                  setEditForm({ title: job.title, description: job.description || "", address: job.address || "" });
+                  setEditForm({ title: job.title, description: job.description || "", address: job.address || "", status: job.status });
                   setEditOpen(true);
                 }}>
                   <Pencil className="h-3.5 w-3.5" />
@@ -869,8 +892,8 @@ export default function JobDetail() {
                   </Button>
                 )}
                 <Button size="sm" variant="outline" className="text-xs" onClick={handleShareOrPrint}>
-                  {navigator.share ? <Share2 className="h-3 w-3 mr-1" /> : <Printer className="h-3 w-3 mr-1" />}
-                  {navigator.share ? "Share" : "Print / PDF"}
+                  {canShareFiles ? <Share2 className="h-3 w-3 mr-1" /> : <Printer className="h-3 w-3 mr-1" />}
+                  {canShareFiles ? "Share" : "Print / PDF"}
                 </Button>
                 <Button size="sm" variant="outline" className="text-xs" onClick={handleDownloadOwnerPdf}>
                   <FileText className="h-3 w-3 mr-1" /> System Owner PDF
@@ -893,8 +916,8 @@ export default function JobDetail() {
                 </Button>
               ))}
               <Button size="sm" variant="outline" className="text-xs" onClick={handleShareOrPrint}>
-                {navigator.share ? <Share2 className="h-3 w-3 mr-1" /> : <Printer className="h-3 w-3 mr-1" />}
-                {navigator.share ? "Share PDF" : "Download PDF"}
+                {canShareFiles ? <Share2 className="h-3 w-3 mr-1" /> : <Printer className="h-3 w-3 mr-1" />}
+                {canShareFiles ? "Share PDF" : "Download PDF"}
               </Button>
             </div>
           )}
@@ -1333,6 +1356,25 @@ export default function JobDetail() {
               <Label className="text-xs">Description</Label>
               <Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={3} />
             </div>
+            {role === "admin" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Status</Label>
+                <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={job.status}>{statusMap[job.status]} (current)</SelectItem>
+                    {(transitions[job.status] || []).map((s) => (
+                      <SelectItem key={s} value={s}>{statusMap[s]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {job.status === "cancelled" && editForm.status !== "cancelled" && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Reviving a cancelled job will notify the owner and assigned team.
+                  </p>
+                )}
+              </div>
+            )}
             <Button className="w-full" disabled={editSubmitting} onClick={handleEditJob}>
               {editSubmitting ? "Saving..." : "Save Changes"}
             </Button>
