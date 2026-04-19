@@ -31,3 +31,4 @@ supabase/.branches/
 *.njsproj
 *.sln
 *.sw?
+.vercel
