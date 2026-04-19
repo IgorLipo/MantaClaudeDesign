@@ -1,73 +1,57 @@
-# Welcome to your Lovable project
+# Manta Ray Energy
 
-## Project info
+A mobile-first operations platform for managing UK solar-installation jobs across four roles: **System Owner**, **Admin**, **Scaffolder**, **Engineer**.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+> Exported from Lovable and now maintained directly. The full product spec lives in [`CLAUDE.md`](./CLAUDE.md). Stale / pre-divergence material is archived under [`docs/_archive/`](./docs/_archive).
 
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Quick start
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+npm install
+cp .env.example .env   # fill with your Supabase keys
+npm run dev            # http://localhost:8080
 ```
 
-**Edit a file directly in GitHub**
+## Scripts
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| Script | What it does |
+|--------|--------------|
+| `npm run dev` | Vite dev server on port 8080 |
+| `npm run build` | Production build to `dist/` |
+| `npm run build:dev` | Dev-mode build |
+| `npm run preview` | Serve the built `dist/` |
+| `npm run lint` | ESLint |
+| `npm test` | Vitest (single run) |
+| `npm run test:watch` | Vitest watch mode |
 
-**Use GitHub Codespaces**
+## Stack
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- **Frontend**: React 18 + TypeScript + Vite 5 + Tailwind 3 + shadcn/ui + Radix
+- **Backend**: Supabase (PostgreSQL + Auth + Storage + Edge Functions on Deno)
+- **State**: TanStack React Query
+- **Forms**: React Hook Form + Zod
+- **PWA**: vite-plugin-pwa + Workbox
+- **Deploy**: Vercel (auto from `main`)
 
-## What technologies are used for this project?
+## Supabase layout
 
-This project is built with:
+- `supabase/migrations/` — SQL migrations (applied in order)
+- `supabase/functions/` — Edge functions (`admin-invite-user`, `create-admin`, `get-maps-key`, `summarize-report`, `update-signup-role`)
+- `supabase/config.toml` — points at the current Supabase project ref
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Repo conventions
 
-## How can I deploy this project?
+- **`main`** is the active branch; Vercel auto-deploys from it.
+- Secrets live in `.env` (never committed) and in Vercel / Supabase dashboards.
+- Per-phase work is made as small, reviewable commits — see `CLAUDE.md` §19.
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Roles summary
 
-## Can I connect a custom domain to my Lovable project?
+| Role | Access |
+|------|--------|
+| **System Owner** | Invite-link onboarding, one job app, status card, no chat |
+| **Admin** | Single pre-created account, full job lifecycle + exports |
+| **Scaffolder** | Assigned jobs, before/after scaffolding photos, quote flow |
+| **Engineer** | Assigned jobs, before/after roof photos, site report PDF |
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Full behavior spec: [`CLAUDE.md`](./CLAUDE.md).
