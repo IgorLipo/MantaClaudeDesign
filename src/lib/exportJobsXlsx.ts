@@ -5,6 +5,7 @@ interface ExportRow {
   "Case No.": string;
   "Address": string;
   "Status": string;
+  "Panel Count": number | string;
   "Scaffolding Price (£)": number | string;
   "Scaffolder's Name": string;
   "Engineer's Name": string;
@@ -62,6 +63,7 @@ export async function exportAllJobsToExcel(): Promise<void> {
       "Case No.": job.case_no || "",
       "Address": job.address || "",
       "Status": statusLabel[job.status] || job.status,
+      "Panel Count": job.panel_count ?? "",
       "Scaffolding Price (£)": job.final_price ?? "",
       "Scaffolder's Name": scaffolderNames,
       "Engineer's Name": engineerNames,
@@ -74,7 +76,7 @@ export async function exportAllJobsToExcel(): Promise<void> {
   const ws = XLSX.utils.json_to_sheet(rows);
   // Set sensible column widths
   ws["!cols"] = [
-    { wch: 16 }, { wch: 40 }, { wch: 18 }, { wch: 18 },
+    { wch: 16 }, { wch: 40 }, { wch: 18 }, { wch: 12 }, { wch: 18 },
     { wch: 28 }, { wch: 28 }, { wch: 24 }, { wch: 18 }, { wch: 50 },
   ];
 
