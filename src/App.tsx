@@ -20,6 +20,7 @@ import AuditLog from "./pages/AuditLog";
 import SettingsPage from "./pages/SettingsPage";
 import OwnerOnboarding from "./pages/OwnerOnboarding";
 import OwnerJobHome from "./pages/OwnerJobHome";
+import InviteRedeem from "./pages/InviteRedeem";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ function AppRoutes() {
   if (!user) {
     return (
       <Routes>
+        <Route path="/invite/:token" element={<InviteRedeem />} />
         <Route path="/login" element={<Login />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
@@ -61,6 +63,8 @@ function AppRoutes() {
         <Route path="/jobs/:id/report" element={<ProtectedRoute><SiteReport /></ProtectedRoute>} />
         <Route path="/my-job" element={<ProtectedRoute roles={["owner"]}><OwnerJobHome /></ProtectedRoute>} />
         <Route path="/new-job" element={<ProtectedRoute roles={["owner", "admin"]}><OwnerOnboarding /></ProtectedRoute>} />
+        <Route path="/onboarding/:jobId" element={<ProtectedRoute><OwnerOnboarding /></ProtectedRoute>} />
+        <Route path="/invite/:token" element={<InviteRedeem />} />
         <Route path="/my-quotes" element={<ProtectedRoute roles={["scaffolder"]}><MyQuotes /></ProtectedRoute>} />
         <Route path="/site-reports" element={<ProtectedRoute roles={["engineer"]}><MySiteReports /></ProtectedRoute>} />
         <Route path="/scaffolders" element={<ProtectedRoute roles={["admin"]}><Scaffolders /></ProtectedRoute>} />
