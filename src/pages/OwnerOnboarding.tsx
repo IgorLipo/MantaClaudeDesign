@@ -123,7 +123,7 @@ export default function OwnerOnboarding() {
     });
 
     const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-      types: ["address"], componentRestrictions: { country: "gb" },
+      types: ["address"],
     });
     autocomplete.addListener("place_changed", () => {
       const place = autocomplete.getPlace();
