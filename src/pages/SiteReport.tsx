@@ -177,7 +177,7 @@ export default function SiteReport() {
     if (!jobId) return;
     toast({ title: "Generating PDF..." });
     try {
-      const blob = await generateSiteReportPdf(formData, jobId);
+      const blob = await generateSiteReportPdf(formData, jobId, { panelCount });
       const file = new File([blob], `site-report-${jobId.slice(0, 8)}.pdf`, { type: "application/pdf" });
 
       if (navigator.share && navigator.canShare?.({ files: [file] })) {

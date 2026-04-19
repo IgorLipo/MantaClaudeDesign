@@ -4,7 +4,11 @@ import type { ReportFormData } from "./SiteReportForm";
  * Generates a professional PDF matching the Manta Ray Energy site report template.
  * Uses jsPDF directly (no html2canvas) for clean, vector-quality output.
  */
-export async function generateSiteReportPdf(data: ReportFormData, jobId: string): Promise<Blob> {
+export async function generateSiteReportPdf(
+  data: ReportFormData,
+  jobId: string,
+  extras: { panelCount?: number | null } = {}
+): Promise<Blob> {
   const { default: jsPDF } = await import("jspdf");
 
   const pdf = new jsPDF("p", "mm", "a4");
@@ -100,6 +104,7 @@ export async function generateSiteReportPdf(data: ReportFormData, jobId: string)
     ["Address", data.address],
     ["Case No.", data.case_no],
     ["Optimizer No.", data.optimizer_no],
+    ["Panel Count", extras.panelCount != null ? String(extras.panelCount) : ""],
     ["Site ID", data.site_id],
     ["FSEs / Attendees", data.fse_attendees],
     ["Installer Details", data.installer_details],
