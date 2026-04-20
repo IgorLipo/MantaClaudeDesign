@@ -71,10 +71,13 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="p-4 lg:p-8 space-y-4 max-w-2xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
-        <p className="text-sm text-muted-foreground">Manage your account</p>
+    <div className="p-4 lg:p-10 space-y-5 max-w-2xl mx-auto animate-em-enter">
+      <div className="space-y-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Account</span>
+        <h1 className="font-display text-4xl lg:text-5xl leading-[1.02] tracking-tight text-foreground">
+          Settings<span className="font-display-italic text-primary">.</span>
+        </h1>
+        <p className="text-sm text-muted-foreground">Manage your profile, preferences, and access.</p>
       </div>
 
       <Tabs defaultValue="profile" className="space-y-4">

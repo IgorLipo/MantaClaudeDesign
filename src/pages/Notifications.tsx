@@ -47,10 +47,15 @@ export default function Notifications() {
       <div className="mx-auto max-w-3xl px-4 py-8">
         {/* Header */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Notifications</h1>
+          <div className="space-y-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Inbox</span>
+            <h1 className="font-display text-4xl lg:text-5xl leading-[1.02] tracking-tight text-foreground">
+              Notifications<span className="font-display-italic text-primary">.</span>
+            </h1>
             <p className="text-sm text-muted-foreground">
-              {unreadCount > 0 ? `${unreadCount} unread` : "All caught up!"}
+              {unreadCount > 0 ? (
+                <><span className="tabular-nums font-medium text-foreground">{unreadCount}</span> unread</>
+              ) : "All caught up."}
             </p>
           </div>
           {unreadCount > 0 && (

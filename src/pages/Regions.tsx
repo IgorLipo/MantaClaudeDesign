@@ -108,9 +108,12 @@ export default function Regions() {
   return (
     <div className="p-4 lg:p-8 space-y-4 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Regions</h1>
-          <p className="text-sm text-muted-foreground">{regions.length} regions</p>
+        <div className="space-y-2">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Coverage</span>
+          <h1 className="font-display text-4xl lg:text-5xl leading-[1.02] tracking-tight text-foreground">
+            Operating <span className="font-display-italic text-primary">regions.</span>
+          </h1>
+          <p className="text-sm text-muted-foreground"><span className="tabular-nums font-medium text-foreground">{regions.length}</span> regions</p>
         </div>
         {role === "admin" && (
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>

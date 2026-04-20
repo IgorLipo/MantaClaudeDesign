@@ -60,10 +60,13 @@ export default function AuditLog() {
   };
 
   return (
-    <div className="p-4 lg:p-8 space-y-4 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Audit Log</h1>
-        <p className="text-sm text-muted-foreground">{total} entries</p>
+    <div className="p-4 lg:p-10 space-y-5 max-w-5xl mx-auto animate-em-enter">
+      <div className="space-y-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Trail</span>
+        <h1 className="font-display text-4xl lg:text-5xl leading-[1.02] tracking-tight text-foreground">
+          Audit <span className="font-display-italic text-primary">log.</span>
+        </h1>
+        <p className="text-sm text-muted-foreground"><span className="tabular-nums font-medium text-foreground">{total}</span> entries</p>
       </div>
 
       {/* Filters */}

@@ -32,13 +32,15 @@ export default function AIPage() {
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground flex items-center gap-2">
-            <Brain className="h-6 w-6 text-accent" />
-            AI Report Summarizer
+        <div className="mb-8 space-y-2 animate-em-enter">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary flex items-center gap-1.5">
+            <Brain className="h-3 w-3" /> Signal
+          </span>
+          <h1 className="font-display text-4xl lg:text-5xl leading-[1.02] tracking-tight text-foreground">
+            AI report <span className="font-display-italic text-primary">summarizer.</span>
           </h1>
           <p className="text-sm text-muted-foreground">
-            Generate executive summaries from your financial data using AI
+            Turn raw job data into executive summaries.
           </p>
         </div>
 

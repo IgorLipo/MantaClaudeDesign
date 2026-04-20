@@ -34,10 +34,13 @@ export default function MyQuotes() {
   }, [user]);
 
   return (
-    <div className="p-4 lg:p-8 space-y-4 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">My Quotes</h1>
-        <p className="text-sm text-muted-foreground">{quotes.length} quotes submitted</p>
+    <div className="p-4 lg:p-10 space-y-5 max-w-4xl mx-auto animate-em-enter">
+      <div className="space-y-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Your book</span>
+        <h1 className="font-display text-4xl lg:text-5xl leading-[1.02] tracking-tight text-foreground">
+          My <span className="font-display-italic text-primary">quotes.</span>
+        </h1>
+        <p className="text-sm text-muted-foreground"><span className="tabular-nums font-medium text-foreground">{quotes.length}</span> quotes submitted</p>
       </div>
 
       {loading ? (

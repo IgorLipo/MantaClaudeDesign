@@ -173,9 +173,15 @@ export default function Scaffolders() {
   return (
     <div className="p-4 lg:p-8 space-y-4 max-w-7xl mx-auto">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Team</h1>
-          <p className="text-sm text-muted-foreground">{scaffolders.length} scaffolders · {engineers.length} engineers</p>
+        <div className="space-y-2">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Crew</span>
+          <h1 className="font-display text-4xl lg:text-5xl leading-[1.02] tracking-tight text-foreground">
+            The <span className="font-display-italic text-primary">team.</span>
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            <span className="tabular-nums font-medium text-foreground">{scaffolders.length}</span> scaffolders ·{" "}
+            <span className="tabular-nums font-medium text-foreground">{engineers.length}</span> engineers
+          </p>
         </div>
         {role === "admin" && (
           <Button size="sm" onClick={() => setInviteOpen(true)}>

@@ -74,9 +74,12 @@ export default function NotificationsPage() {
   return (
     <div className="p-4 lg:p-8 space-y-4 max-w-3xl mx-auto">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Notifications</h1>
-          <p className="text-sm text-muted-foreground">{unreadCount} unread</p>
+        <div className="space-y-2">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Inbox</span>
+          <h1 className="font-display text-4xl lg:text-5xl leading-[1.02] tracking-tight text-foreground">
+            Notifications<span className="font-display-italic text-primary">.</span>
+          </h1>
+          <p className="text-sm text-muted-foreground"><span className="tabular-nums font-medium text-foreground">{unreadCount}</span> unread</p>
         </div>
         {unreadCount > 0 && (
           <Button variant="outline" size="sm" onClick={markAllRead}>

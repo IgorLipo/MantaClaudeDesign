@@ -40,12 +40,13 @@ export default function Productivity() {
       <div className="mx-auto max-w-7xl px-4 py-8">
         {/* Header */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              Productivity Tracker
+          <div className="space-y-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Cadence</span>
+            <h1 className="font-display text-4xl lg:text-5xl leading-[1.02] tracking-tight text-foreground">
+              Productivity <span className="font-display-italic text-primary">tracker.</span>
             </h1>
             <p className="text-sm text-muted-foreground">
-              Track reporting cycles and team tasks
+              Reporting cycles and team tasks.
             </p>
           </div>
           <div className="flex items-center gap-3">
