@@ -30,7 +30,12 @@ export default function OwnerJobHome() {
 
   if (!checked)
     return (
-      <div className="p-8 text-muted-foreground text-center">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <div className="h-2 w-2 rounded-full bg-primary animate-ember-pulse" />
+          <span className="font-mono text-[11px] uppercase tracking-wider">Finding your site</span>
+        </div>
+      </div>
     );
   return null;
 }

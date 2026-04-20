@@ -236,28 +236,37 @@ export default function Reports() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        {/* Header */}
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Reports Dashboard</h1>
-            <p className="text-sm text-muted-foreground mt-1">Build, manage, and track your financial reports</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link to="/reports/templates">
-              <Button variant="outline" className="gap-2">
-                <LayoutTemplate className="h-4 w-4" />
-                Templates
-              </Button>
-            </Link>
-            <Link to="/reports/new">
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                New Report
-              </Button>
-            </Link>
+      <section className="border-b border-border/60">
+        <div className="mx-auto max-w-7xl px-4 lg:px-10 py-8 lg:py-10 animate-em-enter">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div className="space-y-2">
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Reports</span>
+              <h1 className="font-display text-4xl lg:text-5xl leading-[1.02] tracking-tight text-foreground">
+                Build the <span className="font-display-italic text-primary">story.</span>
+              </h1>
+              <p className="text-sm text-muted-foreground max-w-md">
+                Compose, save, and revisit site reports — drag modules, pin charts, export to PDF.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link to="/reports/templates">
+                <Button variant="outline" className="gap-2">
+                  <LayoutTemplate className="h-4 w-4" />
+                  Templates
+                </Button>
+              </Link>
+              <Link to="/reports/new">
+                <Button className="gap-2 shadow-sm hover:shadow-glow">
+                  <Plus className="h-4 w-4" />
+                  New report
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
+      </section>
+
+      <div className="mx-auto max-w-7xl px-4 lg:px-10 py-8 lg:py-10">
 
         {/* Dashboard Stats */}
         {savedReports.length > 0 && <DashboardStats reports={savedReports} />}

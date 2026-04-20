@@ -244,16 +244,35 @@ export default function OwnerOnboarding() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 max-w-lg mx-auto space-y-4">
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-sm font-medium text-foreground">
-            {existingJob && caseNo ? `Case No. ${caseNo}` : "New Application"}
-          </p>
-          <span className="text-xs text-muted-foreground">Step {step + 1} of {totalSteps}</span>
+    <div className="min-h-screen bg-background">
+      {/* sticky progress header */}
+      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-md border-b border-border/60">
+        <div className="max-w-lg mx-auto px-4 py-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary truncate">
+                {existingJob && caseNo ? caseNo : "New application"}
+              </div>
+              <div className="font-display text-lg leading-tight text-foreground mt-0.5">
+                {step === 0 ? "Property" : step === 1 ? "Job type" : step === 2 ? "Panel count" : step >= totalSteps - 1 ? "Review" : "Photos"}
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <div className="font-display text-2xl tabular-nums text-foreground leading-none">
+                {step + 1}<span className="text-muted-foreground/60">/{totalSteps}</span>
+              </div>
+              <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground mt-1">step</div>
+            </div>
+          </div>
+          <div className="h-[3px] w-full bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-primary via-primary to-accent transition-[width] duration-soft ease-soft"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
         </div>
-        <Progress value={progress} className="h-2" />
-      </div>
+      </header>
+      <div className="p-4 max-w-lg mx-auto space-y-5 animate-em-enter">
 
       {/* Step 0: Address */}
       {step === 0 && (
@@ -453,6 +472,7 @@ export default function OwnerOnboarding() {
             {submitting ? "Submitting..." : "Submit Application"}
           </Button>
         )}
+      </div>
       </div>
     </div>
   );

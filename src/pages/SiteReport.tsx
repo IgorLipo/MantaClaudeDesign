@@ -205,23 +205,29 @@ export default function SiteReport() {
   if (loading) return <div className="p-8 text-muted-foreground">Loading...</div>;
 
   return (
-    <div className="p-4 lg:p-8 space-y-4 max-w-2xl mx-auto">
+    <div className="p-4 lg:p-8 space-y-5 max-w-2xl mx-auto animate-em-enter">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={() => navigate(`/jobs/${jobId}`)}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Job
+        <Button variant="ghost" size="sm" onClick={() => navigate(`/jobs/${jobId}`)} className="-ml-2 text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Back to job
         </Button>
         <Button variant="outline" size="sm" onClick={shareReport}>
-          <FileDown className="h-4 w-4 mr-1" /> PDF
+          <FileDown className="h-4 w-4" /> PDF
         </Button>
       </div>
 
-      <div>
-        <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
-          <ClipboardList className="h-5 w-5 text-primary" /> Site Visit Report
+      <div className="space-y-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary flex items-center gap-1.5">
+          <ClipboardList className="h-3 w-3" /> Site visit
+        </span>
+        <h1 className="font-display text-4xl leading-[1.02] tracking-tight text-foreground">
+          On-site <span className="font-display-italic text-primary">report.</span>
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">{filledCount}/{totalFields} sections completed</p>
-        <Progress value={(filledCount / totalFields) * 100} className="mt-2 h-2" />
+        <div className="flex items-baseline gap-2 text-sm text-muted-foreground">
+          <span className="font-mono tabular-nums text-foreground font-medium">{filledCount}/{totalFields}</span>
+          <span>sections completed</span>
+        </div>
+        <Progress value={(filledCount / totalFields) * 100} className="h-1.5" />
         {reportStatus === "submitted" && (
           <p className="text-xs text-primary mt-1">✓ Submitted — you can still edit and re-export</p>
         )}
