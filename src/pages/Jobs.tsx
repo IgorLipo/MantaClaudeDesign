@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Briefcase, FileSpreadsheet } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Search, Briefcase, FileSpreadsheet, ArrowUpRight, MapPin, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { AdminCreateJobDialog } from "@/components/jobs/AdminCreateJobDialog";
@@ -19,16 +19,25 @@ const statusMap: Record<string, string> = {
   in_progress: "In Progress", completed: "Completed", cancelled: "Cancelled",
 };
 
-const statusColor = (s: string) => {
-  if (s === "completed") return "bg-success/10 text-success";
-  if (s === "in_progress") return "bg-info/10 text-info";
-  if (s === "cancelled") return "bg-destructive/10 text-destructive";
-  if (s === "awaiting_owner_details") return "bg-muted text-muted-foreground";
-  return "bg-warning/10 text-warning";
+const statusVariant = (s: string) => {
+  if (s === "completed") return "complete";
+  if (s === "in_progress") return "active";
+  if (s === "scheduled") return "scheduled";
+  if (s === "cancelled") return "cancelled";
+  if (s === "awaiting_owner_details" || s === "draft") return "draft";
+  if (["quote_pending", "quote_submitted", "negotiating"].includes(s)) return "review";
+  return "pending";
 };
 
 const pendingStatuses = ["awaiting_owner_details", "draft", "submitted", "photo_review", "quote_pending", "quote_submitted", "negotiating"];
 const activeStatuses = ["scheduled", "in_progress"];
+
+const filterTabs = [
+  { key: "", label: "All" },
+  { key: "pending", label: "Pending" },
+  { key: "active", label: "In flight" },
+  { key: "completed", label: "Completed" },
+];
 
 export default function Jobs() {
   const { role } = useAuth();
@@ -38,10 +47,10 @@ export default function Jobs() {
   const [createOpen, setCreateOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
 
-  const statusFilter = searchParams.get("filter");
+  const statusFilter = searchParams.get("filter") || "";
 
   const fetchJobs = async () => {
     const { data } = await supabase.from("jobs").select("*").order("created_at", { ascending: false });
@@ -75,77 +84,157 @@ export default function Jobs() {
     setExporting(false);
   };
 
+  const setFilter = (key: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (key) params.set("filter", key); else params.delete("filter");
+    setSearchParams(params, { replace: true });
+  };
+
   return (
-    <div className="p-4 lg:p-8 space-y-4 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Jobs</h1>
-          <p className="text-sm text-muted-foreground">
-            {filtered.length} {statusFilter ? `${statusFilter}` : "total"} jobs
-          </p>
+    <div className="min-h-screen">
+      {/* Header */}
+      <section className="border-b border-border/60">
+        <div className="p-4 lg:p-10 max-w-7xl mx-auto">
+          <div className="flex flex-wrap items-end justify-between gap-4 animate-em-enter">
+            <div className="space-y-2 min-w-0">
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Jobs</span>
+              <h1 className="font-display text-4xl lg:text-5xl leading-[1.02] tracking-tight text-foreground">
+                Every <span className="font-display-italic text-primary">install</span>,
+                <br className="hidden sm:block" /> in one ledger.
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {loading ? "Loading…" : `${filtered.length} ${statusFilter ? statusFilter : "total"} job${filtered.length === 1 ? "" : "s"}`}
+              </p>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {role === "admin" && (
+                <>
+                  <Button size="sm" variant="outline" onClick={handleExport} disabled={exporting}>
+                    <FileSpreadsheet className="h-4 w-4" />
+                    {exporting ? "Exporting…" : "Export"}
+                  </Button>
+                  <Button size="sm" onClick={() => setCreateOpen(true)} className="shadow-sm hover:shadow-glow">
+                    <Plus className="h-4 w-4" /> New job
+                  </Button>
+                </>
+              )}
+              {role === "owner" && (
+                <Button size="sm" onClick={() => navigate("/new-job")} className="shadow-sm hover:shadow-glow">
+                  <Plus className="h-4 w-4" /> New job
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          {statusFilter && (
-            <Button size="sm" variant="outline" onClick={() => navigate("/jobs")}>
-              Clear Filter
-            </Button>
-          )}
-          {role === "admin" && (
-            <>
-              <Button size="sm" variant="outline" onClick={handleExport} disabled={exporting}>
-                <FileSpreadsheet className="h-4 w-4 mr-1" /> {exporting ? "Exporting..." : "Export to Excel"}
-              </Button>
-              <Button size="sm" onClick={() => setCreateOpen(true)}>
-                <Plus className="h-4 w-4 mr-1" /> New Job
-              </Button>
-            </>
-          )}
-          {role === "owner" && (
-            <Button size="sm" onClick={() => navigate("/new-job")}>
-              <Plus className="h-4 w-4 mr-1" /> New Job
-            </Button>
-          )}
+      </section>
+
+      <div className="p-4 lg:p-10 max-w-7xl mx-auto space-y-6">
+        {/* Controls */}
+        <div className="flex flex-wrap items-center gap-3 animate-em-enter" style={{ animationDelay: "80ms" }}>
+          {/* Filter tabs */}
+          <div className="inline-flex items-center gap-1 bg-muted/60 ring-1 ring-border/60 rounded-md p-1">
+            {filterTabs.map((t) => (
+              <button
+                key={t.key || "all"}
+                onClick={() => setFilter(t.key)}
+                className={cn(
+                  "px-3 h-8 rounded text-xs font-medium transition-[background-color,color,box-shadow] duration-quick ease-quick",
+                  statusFilter === t.key
+                    ? "bg-card text-foreground shadow-xs ring-1 ring-border/60"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="relative flex-1 min-w-[220px] max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search title, address, or case no."
+              className="pl-9 h-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded hover:bg-muted text-muted-foreground"
+              >
+                <X className="h-3.5 w-3.5 mx-auto" />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search by title, address, or Case No..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
-      </div>
-
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : filtered.length === 0 ? (
-        <Card className="card-elevated">
-          <CardContent className="py-12 text-center">
-            <Briefcase className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">No jobs found</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {filtered.map((job) => (
-            <Card key={job.id} className="card-elevated hover-lift cursor-pointer" onClick={() => navigate(`/jobs/${job.id}`)}>
-              <CardContent className="p-4 flex items-center justify-between gap-3">
+        {/* List */}
+        {loading ? (
+          <div className="rounded-lg bg-card ring-1 ring-border/80 divide-y divide-border/60">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="px-5 py-4 flex items-center gap-4">
+                <div className="h-3 w-16 bg-muted rounded animate-pulse" />
+                <div className="h-3 w-56 bg-muted rounded animate-pulse" />
+                <div className="h-5 w-24 bg-muted rounded-full animate-pulse ml-auto" />
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-lg bg-card ring-1 ring-border/80 py-20 text-center animate-em-enter">
+            <div className="mx-auto h-12 w-12 rounded-full bg-primary-soft text-primary flex items-center justify-center mb-3">
+              <Briefcase className="h-5 w-5" />
+            </div>
+            <p className="text-sm font-medium text-foreground">No jobs match</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {search || statusFilter ? "Try clearing filters." : "Jobs will appear here once created."}
+            </p>
+            {(search || statusFilter) && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-4"
+                onClick={() => { setSearch(""); setFilter(""); }}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-lg bg-card ring-1 ring-border/80 shadow-xs overflow-hidden animate-em-enter" style={{ animationDelay: "160ms" }}>
+            {filtered.map((job, i) => (
+              <button
+                key={job.id}
+                onClick={() => navigate(`/jobs/${job.id}`)}
+                className={cn(
+                  "group w-full text-left px-5 py-4 flex items-center gap-4",
+                  "hover:bg-subtle/60 transition-colors duration-quick",
+                  i !== 0 && "border-t border-border/60"
+                )}
+              >
+                {job.case_no && (
+                  <span className="font-mono text-[11px] text-muted-foreground/80 w-24 truncate shrink-0">
+                    {job.case_no}
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-medium text-foreground truncate">{job.title}</p>
-                    {job.case_no && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono font-medium">
-                        {job.case_no}
-                      </span>
-                    )}
+                  <div className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors duration-quick">
+                    {job.title}
                   </div>
-                  <p className="text-xs text-muted-foreground truncate">{job.address || "Address pending"}</p>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{job.address || "Address pending"}</span>
+                  </div>
                 </div>
-                <span className={cn("text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap", statusColor(job.status))}>
+                <Badge variant={statusVariant(job.status) as any} className="shrink-0">
                   {statusMap[job.status] || job.status}
-                </span>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                </Badge>
+                <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground transition-[color,transform] duration-quick -translate-x-1 group-hover:translate-x-0 shrink-0" />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       <AdminCreateJobDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={fetchJobs} />
     </div>

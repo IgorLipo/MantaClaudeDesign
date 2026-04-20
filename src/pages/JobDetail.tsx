@@ -40,11 +40,14 @@ const statusMap: Record<string, string> = {
   in_progress: "In Progress", completed: "Completed", cancelled: "Cancelled",
 };
 
-const statusColor = (s: string) => {
-  if (s === "completed") return "bg-success/10 text-success";
-  if (s === "in_progress") return "bg-info/10 text-info";
-  if (s === "cancelled") return "bg-destructive/10 text-destructive";
-  return "bg-warning/10 text-warning";
+const statusVariantOf = (s: string): "complete" | "active" | "cancelled" | "scheduled" | "review" | "draft" | "pending" => {
+  if (s === "completed") return "complete";
+  if (s === "in_progress") return "active";
+  if (s === "cancelled") return "cancelled";
+  if (s === "scheduled") return "scheduled";
+  if (s === "awaiting_owner_details" || s === "draft") return "draft";
+  if (["quote_pending", "quote_submitted", "negotiating"].includes(s)) return "review";
+  return "pending";
 };
 
 const transitions: Record<string, string[]> = {
@@ -714,12 +717,19 @@ export default function JobDetail() {
   const ownerStatus = ownerStatusInfo[job.status];
 
   return (
-    <div className="p-4 lg:p-8 space-y-4 max-w-3xl mx-auto print:max-w-none">
+    <div className="p-4 lg:p-8 space-y-5 max-w-3xl mx-auto print:max-w-none animate-em-enter">
       {/* Back button — not for owner (single-job view) */}
       {role !== "owner" && (
-        <Button variant="ghost" size="sm" onClick={() => navigate("/jobs")}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back
-        </Button>
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/jobs")} className="-ml-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" /> Back to jobs
+          </Button>
+          {job?.case_no && (
+            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
+              {job.case_no}
+            </span>
+          )}
+        </div>
       )}
 
       {/* Owner Status Card */}
@@ -765,9 +775,9 @@ export default function JobDetail() {
             </div>
             <div className="flex items-center gap-2">
               {role !== "owner" && (
-                <span className={cn("text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap", statusColor(job.status))}>
+                <Badge variant={statusVariantOf(job.status) as any} className="whitespace-nowrap">
                   {statusMap[job.status]}
-                </span>
+                </Badge>
               )}
               {canEdit && role !== "owner" && (
                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => {
