@@ -178,6 +178,7 @@ export type Database = {
           description: string | null
           final_price: number | null
           id: string
+          job_settings: Json | null
           lat: number | null
           lng: number | null
           owner_id: string | null
@@ -202,6 +203,7 @@ export type Database = {
           description?: string | null
           final_price?: number | null
           id?: string
+          job_settings?: Json | null
           lat?: number | null
           lng?: number | null
           owner_id?: string | null
@@ -226,6 +228,7 @@ export type Database = {
           description?: string | null
           final_price?: number | null
           id?: string
+          job_settings?: Json | null
           lat?: number | null
           lng?: number | null
           owner_id?: string | null
@@ -599,6 +602,7 @@ export type Database = {
       app_role: "admin" | "owner" | "scaffolder" | "engineer"
       job_status:
         | "awaiting_owner_details"
+        | "planning"
         | "draft"
         | "submitted"
         | "photo_review"
@@ -741,6 +745,7 @@ export const Constants = {
       app_role: ["admin", "owner", "scaffolder", "engineer"],
       job_status: [
         "awaiting_owner_details",
+        "planning",
         "draft",
         "submitted",
         "photo_review",
