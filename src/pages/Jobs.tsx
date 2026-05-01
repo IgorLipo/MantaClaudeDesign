@@ -5,32 +5,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Briefcase, FileSpreadsheet, ArrowUpRight, MapPin, X } from "lucide-react";
+import { Plus, Search, Briefcase, FileSpreadsheet, ArrowUpRight, MapPin, X, LayoutList, Columns2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { AdminCreateJobDialog } from "@/components/jobs/AdminCreateJobDialog";
+import { KanbanBoard } from "@/components/jobs/KanbanBoard";
 import { exportAllJobsToExcel } from "@/lib/exportJobsXlsx";
-
-const statusMap: Record<string, string> = {
-  awaiting_owner_details: "Awaiting Owner",
-  draft: "Draft", submitted: "Submitted", photo_review: "Photo Review",
-  quote_pending: "Quote Pending", quote_submitted: "Quote Submitted",
-  negotiating: "Negotiating", scheduled: "Scheduled",
-  in_progress: "In Progress", completed: "Completed", cancelled: "Cancelled",
-};
-
-const statusVariant = (s: string) => {
-  if (s === "completed") return "complete";
-  if (s === "in_progress") return "active";
-  if (s === "scheduled") return "scheduled";
-  if (s === "cancelled") return "cancelled";
-  if (s === "awaiting_owner_details" || s === "draft") return "draft";
-  if (["quote_pending", "quote_submitted", "negotiating"].includes(s)) return "review";
-  return "pending";
-};
-
-const pendingStatuses = ["awaiting_owner_details", "draft", "submitted", "photo_review", "quote_pending", "quote_submitted", "negotiating"];
-const activeStatuses = ["scheduled", "in_progress"];
+import { STATUS_LABELS, STATUS_VARIANTS, PENDING_STATUSES, ACTIVE_FILTER_STATUSES } from "@/constants/status";
 
 const filterTabs = [
   { key: "", label: "All" },
@@ -48,6 +29,7 @@ export default function Jobs() {
   const [exporting, setExporting] = useState(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const { toast } = useToast();
 
   const statusFilter = searchParams.get("filter") || "";
@@ -67,8 +49,8 @@ export default function Jobs() {
       (j.address || "").toLowerCase().includes(q) ||
       (j.case_no || "").toLowerCase().includes(q);
     if (!matches) return false;
-    if (statusFilter === "pending") return pendingStatuses.includes(j.status);
-    if (statusFilter === "active") return activeStatuses.includes(j.status);
+    if (statusFilter === "pending") return PENDING_STATUSES.includes(j.status);
+    if (statusFilter === "active") return ACTIVE_FILTER_STATUSES.includes(j.status);
     if (statusFilter === "completed") return j.status === "completed";
     return true;
   });
@@ -103,7 +85,7 @@ export default function Jobs() {
                 <br className="hidden sm:block" /> in one ledger.
               </h1>
               <p className="text-sm text-muted-foreground">
-                {loading ? "Loading…" : `${filtered.length} ${statusFilter ? statusFilter : "total"} job${filtered.length === 1 ? "" : "s"}`}
+                {loading ? "Loading…" : `${filtered.length} ${statusFilter ? filterTabs.find(t => t.key === statusFilter)?.label?.toLowerCase() || statusFilter : "total"} job${filtered.length === 1 ? "" : "s"}`}
               </p>
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -149,6 +131,34 @@ export default function Jobs() {
             ))}
           </div>
 
+          {/* View toggle (admin only) */}
+          {role === "admin" && (
+            <div className="inline-flex items-center gap-1 bg-muted/60 ring-1 ring-border/60 rounded-md p-1">
+              <button
+                onClick={() => setViewMode("list")}
+                className={cn(
+                  "px-3 h-8 rounded text-xs font-medium transition-all duration-quick",
+                  viewMode === "list"
+                    ? "bg-card text-foreground shadow-xs ring-1 ring-border/60"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <LayoutList className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode("kanban")}
+                className={cn(
+                  "px-3 h-8 rounded text-xs font-medium transition-all duration-quick",
+                  viewMode === "kanban"
+                    ? "bg-card text-foreground shadow-xs ring-1 ring-border/60"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Columns2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
           {/* Search */}
           <div className="relative flex-1 min-w-[220px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -170,7 +180,11 @@ export default function Jobs() {
         </div>
 
         {/* List */}
-        {loading ? (
+        {viewMode === "kanban" && role === "admin" ? (
+          <div className="animate-em-enter" style={{ animationDelay: "160ms" }}>
+            <KanbanBoard />
+          </div>
+        ) : loading ? (
           <div className="rounded-lg bg-card ring-1 ring-border/80 divide-y divide-border/60">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="px-5 py-4 flex items-center gap-4">
@@ -226,8 +240,8 @@ export default function Jobs() {
                     <span className="truncate">{job.address || "Address pending"}</span>
                   </div>
                 </div>
-                <Badge variant={statusVariant(job.status) as any} className="shrink-0">
-                  {statusMap[job.status] || job.status}
+                <Badge variant={STATUS_VARIANTS[job.status] as any} className="shrink-0">
+                  {STATUS_LABELS[job.status] || job.status}
                 </Badge>
                 <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground transition-[color,transform] duration-quick -translate-x-1 group-hover:translate-x-0 shrink-0" />
               </button>
