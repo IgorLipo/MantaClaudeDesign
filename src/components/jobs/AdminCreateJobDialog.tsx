@@ -63,6 +63,20 @@ export function AdminCreateJobDialog({ open, onOpenChange, onCreated }: Props) {
       return;
     }
 
+    // Merge global default settings into the new job
+    const { data: adminSettings } = await supabase
+      .from("admin_settings")
+      .select("default_job_settings")
+      .eq("id", 1)
+      .single();
+
+    if (adminSettings?.default_job_settings && Object.keys(adminSettings.default_job_settings as Record<string, unknown>).length > 0) {
+      await supabase
+        .from("jobs")
+        .update({ job_settings: adminSettings.default_job_settings })
+        .eq("id", job.id);
+    }
+
     // 2. Generate invite token
     const token = generateInviteToken();
     const { error: inviteErr } = await supabase.from("job_invites").insert({
