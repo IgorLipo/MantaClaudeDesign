@@ -183,15 +183,15 @@ export default function OwnerOnboarding() {
 
     let writeError: any = null;
     if (existingJob) {
-      // UPDATE the pre-created job; status moves to submitted
-      updates.status = "submitted";
+      // UPDATE the pre-created job; status moves to planning
+      updates.status = "planning";
       const { error } = await supabase.from("jobs").update(updates).eq("id", jobId);
       writeError = error;
     } else {
       // INSERT a fresh job (legacy direct-onboarding flow, e.g. Admin starting in person)
       const { error } = await supabase.from("jobs").insert({
         id: jobId, title, address, owner_id: isAdmin ? null : user.id,
-        lat, lng, status: (isAdmin ? "draft" : "submitted") as any,
+        lat, lng, status: "planning" as any,
         service_type: serviceType,
         case_no: caseNo.trim() || null,
         panel_count: panelCount ? parseInt(panelCount, 10) : null,

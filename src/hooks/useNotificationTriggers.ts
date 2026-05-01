@@ -1,3 +1,4 @@
+import { STATUS_LABELS } from "@/constants/status";
 import { supabase } from "@/integrations/supabase/client";
 
 interface NotifyParams {
@@ -23,13 +24,7 @@ export async function notifyStatusChange(
   jobId: string, jobTitle: string, newStatus: string,
   ownerId?: string | null, assignedScaffolderIds?: string[]
 ) {
-  const statusLabels: Record<string, string> = {
-    draft: "Draft", submitted: "Submitted", photo_review: "Photo Review",
-    quote_pending: "Quote Pending", quote_submitted: "Quote Submitted",
-    negotiating: "Negotiating", scheduled: "Scheduled",
-    in_progress: "In Progress", completed: "Completed", cancelled: "Cancelled",
-  };
-  const label = statusLabels[newStatus] || newStatus;
+  const label = STATUS_LABELS[newStatus] || newStatus;
   const msg = `Job "${jobTitle}" status updated to ${label}.`;
 
   const ownerStatuses = ["scheduled", "in_progress", "completed", "cancelled"];
@@ -37,7 +32,7 @@ export async function notifyStatusChange(
     await notify({ userId: ownerId, type: "status_change", title: `Job ${label}`, message: msg, data: { job_id: jobId } });
   }
 
-  const scaffolderStatuses = ["scheduled", "in_progress", "completed", "cancelled", "quote_pending"];
+  const scaffolderStatuses = ["scheduled", "in_progress", "completed"];
   if (assignedScaffolderIds && scaffolderStatuses.includes(newStatus)) {
     for (const sid of assignedScaffolderIds) {
       await notify({ userId: sid, type: "status_change", title: `Job ${label}`, message: msg, data: { job_id: jobId } });

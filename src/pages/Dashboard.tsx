@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { STATUS_LABELS, STATUS_VARIANTS, PENDING_STATUSES, ACTIVE_FILTER_STATUSES } from "@/constants/status";
 
 interface JobCounts {
   total: number;
@@ -12,26 +13,6 @@ interface JobCounts {
   inProgress: number;
   completed: number;
 }
-
-const statusMap: Record<string, string> = {
-  draft: "Draft", submitted: "Submitted", photo_review: "Photo Review",
-  quote_pending: "Quote Pending", quote_submitted: "Quote Submitted",
-  negotiating: "Negotiating", scheduled: "Scheduled",
-  in_progress: "In Progress", completed: "Completed", cancelled: "Cancelled",
-};
-
-const statusVariant = (s: string) => {
-  if (s === "completed") return "complete";
-  if (s === "in_progress") return "active";
-  if (s === "scheduled") return "scheduled";
-  if (s === "cancelled") return "cancelled";
-  if (s === "draft") return "draft";
-  if (["quote_pending", "quote_submitted", "negotiating"].includes(s)) return "review";
-  return "pending";
-};
-
-const pendingStatuses = ["draft", "submitted", "photo_review", "quote_pending", "quote_submitted", "negotiating"];
-const activeStatuses = ["scheduled", "in_progress"];
 
 export default function Dashboard() {
   const { role, profile } = useAuth();
@@ -48,8 +29,8 @@ export default function Dashboard() {
         .order("created_at", { ascending: false })
         .limit(10);
       if (allJobs) {
-        const pending = allJobs.filter((j) => pendingStatuses.includes(j.status)).length;
-        const inProgress = allJobs.filter((j) => activeStatuses.includes(j.status)).length;
+        const pending = allJobs.filter((j) => PENDING_STATUSES.includes(j.status)).length;
+        const inProgress = allJobs.filter((j) => ACTIVE_FILTER_STATUSES.includes(j.status)).length;
         const completed = allJobs.filter((j) => j.status === "completed").length;
         setCounts({ total: allJobs.length, pending, inProgress, completed });
       }
@@ -215,8 +196,8 @@ export default function Dashboard() {
                       <div className="text-xs text-muted-foreground truncate mt-0.5">{job.address}</div>
                     )}
                   </div>
-                  <Badge variant={statusVariant(job.status) as any} className="shrink-0">
-                    {statusMap[job.status] || job.status}
+                  <Badge variant={STATUS_VARIANTS[job.status] as any} className="shrink-0">
+                    {STATUS_LABELS[job.status] || job.status}
                   </Badge>
                   <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground transition-[color,transform] duration-quick -translate-x-1 group-hover:translate-x-0 shrink-0" />
                 </button>

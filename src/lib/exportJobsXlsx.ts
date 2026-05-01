@@ -1,3 +1,4 @@
+import { STATUS_LABELS } from "@/constants/status";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -13,14 +14,6 @@ interface ExportRow {
   "Optimizer No.": string;
   "Google Maps Link": string;
 }
-
-const statusLabel: Record<string, string> = {
-  awaiting_owner_details: "Awaiting Owner Details",
-  draft: "Draft", submitted: "Submitted", photo_review: "Photo Review",
-  quote_pending: "Quote Pending", quote_submitted: "Quote Submitted",
-  negotiating: "Negotiating", scheduled: "Scheduled",
-  in_progress: "In Progress", completed: "Completed", cancelled: "Cancelled",
-};
 
 const mapsLink = (lat: number | null, lng: number | null, address: string) => {
   if (lat && lng) return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
@@ -62,7 +55,7 @@ export async function exportAllJobsToExcel(): Promise<void> {
     return {
       "Case No.": job.case_no || "",
       "Address": job.address || "",
-      "Status": statusLabel[job.status] || job.status,
+      "Status": STATUS_LABELS[job.status] || job.status,
       "Panel Count": job.panel_count ?? "",
       "Scaffolding Price (£)": job.final_price ?? "",
       "Scaffolder's Name": scaffolderNames,
