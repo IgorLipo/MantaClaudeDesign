@@ -1,5 +1,7 @@
--- 1. Add 'planning' to job_status enum
+-- 1. Add 'planning' to job_status enum (must commit before using in same migration)
 ALTER TYPE public.job_status ADD VALUE IF NOT EXISTS 'planning' BEFORE 'scheduled';
+COMMIT;
+BEGIN;
 
 -- 2. Migrate old statuses to 'planning'
 UPDATE jobs SET status = 'planning'
