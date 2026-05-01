@@ -1,10 +1,11 @@
 // src/components/jobs/KanbanBoard.tsx
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, User } from "lucide-react";
+import { MapPin, User, GripVertical } from "lucide-react";
 import { KANBAN_COLUMNS, STATUS_LABELS, STATUS_VARIANTS, STATUS_TRANSITIONS } from "@/constants/status";
 import { useToast } from "@/hooks/use-toast";
 import { logAudit } from "@/hooks/useAuditLog";
@@ -24,9 +25,14 @@ interface AssignInfo {
   engineerNames: string[];
 }
 
-export function KanbanBoard() {
+interface Props {
+  onStatusChange?: () => void;
+}
+
+export function KanbanBoard({ onStatusChange }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState<JobCard[]>([]);
   const [assigns, setAssigns] = useState<AssignInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,6 +109,7 @@ export function KanbanBoard() {
       fetchData();
     } else {
       logAudit(user?.id, "status_change", "job", jobId, { from: source.droppableId, to: newStatus, via: "kanban" });
+      onStatusChange?.();
     }
   };
 
@@ -110,7 +117,7 @@ export function KanbanBoard() {
     return (
       <div className="flex gap-4 overflow-x-auto pb-4">
         {KANBAN_COLUMNS.map((col) => (
-          <div key={col} className="min-w-[280px] max-w-[320px] flex-1">
+          <div key={col} className="min-w-[75vw] sm:min-w-[260px] max-w-[320px] flex-1">
             <div className="h-8 w-24 bg-muted rounded animate-pulse mb-3" />
             <div className="space-y-2">
               {Array.from({ length: 2 }).map((_, i) => (
@@ -125,21 +132,21 @@ export function KanbanBoard() {
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1 snap-x snap-mandatory">
         {KANBAN_COLUMNS.map((col) => {
           const colJobs = jobs.filter((j) => j.status === col);
           return (
-            <div key={col} className="min-w-[280px] max-w-[320px] flex-1">
-              <div className="flex items-center gap-2 mb-3">
-                <Badge variant={STATUS_VARIANTS[col] as any}>{STATUS_LABELS[col]}</Badge>
-                <span className="text-xs text-muted-foreground">{colJobs.length}</span>
+            <div key={col} className="min-w-[75vw] sm:min-w-[260px] max-w-[320px] flex-1 snap-start">
+              <div className="flex items-center gap-2 mb-2 sticky left-0">
+                <Badge variant={STATUS_VARIANTS[col] as any} className="text-[10px]">{STATUS_LABELS[col]}</Badge>
+                <span className="text-[10px] text-muted-foreground">{colJobs.length}</span>
               </div>
               <Droppable droppableId={col}>
                 {(provided, snapshot) => (
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className={`space-y-2 min-h-[120px] rounded-lg p-2 transition-colors duration-quick ${
+                    className={`space-y-2 min-h-[120px] rounded-lg p-1.5 sm:p-2 transition-colors duration-quick ${
                       snapshot.isDraggingOver ? "bg-subtle ring-1 ring-primary/30" : ""
                     }`}
                   >
@@ -151,36 +158,45 @@ export function KanbanBoard() {
                             <Card
                               ref={provided.innerRef}
                               {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className={`shadow-xs transition-shadow duration-quick ${
+                              className={`shadow-xs transition-shadow duration-quick cursor-pointer hover:shadow-md ${
                                 snapshot.isDragging ? "shadow-md ring-1 ring-primary/30" : ""
                               }`}
+                              onClick={() => navigate(`/jobs/${job.id}`)}
                             >
-                              <CardContent className="p-3 space-y-2">
-                                <div className="flex items-start justify-between gap-2">
-                                  {job.case_no && (
-                                    <span className="font-mono text-[10px] text-muted-foreground/70 truncate">
-                                      {job.case_no}
-                                    </span>
-                                  )}
+                              <CardContent className="p-2.5 sm:p-3 space-y-2">
+                                <div className="flex items-start justify-between gap-1">
+                                  <div className="flex-1 min-w-0">
+                                    {job.case_no && (
+                                      <span className="font-mono text-[9px] sm:text-[10px] text-muted-foreground/70 truncate block">
+                                        {job.case_no}
+                                      </span>
+                                    )}
+                                    <div className="text-xs sm:text-sm font-medium leading-tight truncate mt-0.5">
+                                      {job.title}
+                                    </div>
+                                  </div>
+                                  <div
+                                    {...provided.dragHandleProps}
+                                    className="shrink-0 p-0.5 rounded hover:bg-muted/60 transition-colors cursor-grab active:cursor-grabbing"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground/50" />
+                                  </div>
                                 </div>
-                                <div className="text-sm font-medium leading-tight truncate">
-                                  {job.title}
-                                </div>
-                                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                <div className="flex items-center gap-1 text-[10px] sm:text-[11px] text-muted-foreground">
                                   <MapPin className="h-3 w-3 shrink-0" />
                                   <span className="truncate">{job.address || "No address"}</span>
                                 </div>
                                 {(info.scaffolderNames.length > 0 || info.engineerNames.length > 0) && (
                                   <div className="space-y-0.5 pt-1 border-t border-border/60">
                                     {info.scaffolderNames.length > 0 && (
-                                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                      <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-muted-foreground">
                                         <User className="h-2.5 w-2.5 shrink-0" />
                                         <span className="truncate">S: {info.scaffolderNames.join(", ")}</span>
                                       </div>
                                     )}
                                     {info.engineerNames.length > 0 && (
-                                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                      <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-muted-foreground">
                                         <User className="h-2.5 w-2.5 shrink-0" />
                                         <span className="truncate">E: {info.engineerNames.join(", ")}</span>
                                       </div>

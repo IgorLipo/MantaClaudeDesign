@@ -7,7 +7,6 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { AppShell } from "@/components/layout/AppShell";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
 import Jobs from "./pages/Jobs";
 import JobDetail from "./pages/JobDetail";
 import SiteReport from "./pages/SiteReport";
@@ -38,7 +37,7 @@ function OwnerRedirect() {
   const { role, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading...</div>;
   if (role === "owner") return <Navigate to="/my-job" replace />;
-  return <Dashboard />;
+  return <Jobs />;
 }
 
 function AppRoutes() {

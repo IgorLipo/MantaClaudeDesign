@@ -16,7 +16,7 @@ import {
   ArrowLeft, MapPin, Calendar, Camera, FileText, Upload,
   CheckCircle2, XCircle, DollarSign, Send, UserPlus, HardHat,
   ClipboardList, ChevronDown, ImagePlus, Pencil, History,
-  MessageSquare, X, Printer, Share2, Clock,
+  MessageSquare, X, Printer, Share2, Clock, ShieldCheck, Copy, Check, Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -26,21 +26,67 @@ import { GuidedPhotoUpload } from "@/components/jobs/GuidedPhotoUpload";
 import { JobComments } from "@/components/jobs/JobComments";
 import { QuoteTimeline } from "@/components/jobs/QuoteTimeline";
 import { AdminPhotoGallery } from "@/components/jobs/AdminPhotoGallery";
+import SafetyChecklistDialog from "@/components/jobs/SafetyChecklistDialog";
+import { buildInviteUrl, buildInviteMessage } from "@/lib/inviteUtils";
+import { Textarea } from "@/components/ui/textarea";
 import {
   notifyStatusChange, notifyQuoteSubmitted, notifyQuoteDecision,
   notifyPhotoUploaded, notifyScaffolderAssigned, notifyOwnerPhotoSubmitted,
   notifyOwnerFinalPrice, notifyJobEdited, notifyEngineerAssigned,
 } from "@/hooks/useNotificationTriggers";
-import { STATUS_LABELS, STATUS_VARIANTS, STATUS_TRANSITIONS } from "@/constants/status";
-import { StatusDropdown } from "@/components/jobs/StatusDropdown";
-import { JobSettingsPanel } from "@/components/jobs/JobSettingsPanel";
 
+const statusMap: Record<string, string> = {
+  awaiting_owner_details: "Awaiting Owner",
+  draft: "Draft", submitted: "Submitted", photo_review: "Photo Review",
+  quote_pending: "Quote Pending", quote_submitted: "Quote Submitted",
+  negotiating: "Negotiating", scheduled: "Scheduled",
+  in_progress: "In Progress", completed: "Completed", cancelled: "Cancelled",
+};
+
+const statusVariantOf = (s: string): "complete" | "active" | "cancelled" | "scheduled" | "review" | "draft" | "pending" => {
+  if (s === "completed") return "complete";
+  if (s === "in_progress") return "active";
+  if (s === "cancelled") return "cancelled";
+  if (s === "scheduled") return "scheduled";
+  if (s === "awaiting_owner_details" || s === "draft") return "draft";
+  if (["quote_pending", "quote_submitted", "negotiating"].includes(s)) return "review";
+  return "pending";
+};
+
+const transitions: Record<string, string[]> = {
+  draft: ["submitted", "cancelled"],
+  submitted: ["photo_review", "cancelled"],
+  photo_review: ["quote_pending", "cancelled"],
+  quote_pending: ["quote_submitted"],
+  quote_submitted: ["negotiating", "scheduled"],
+  negotiating: ["scheduled", "cancelled"],
+  scheduled: ["in_progress", "cancelled"],
+  in_progress: ["completed", "cancelled"],
+  // Admin may revive a cancelled job back to any earlier state via edit dialog.
+  cancelled: ["draft", "submitted", "photo_review", "quote_pending", "quote_submitted", "negotiating", "scheduled", "in_progress"],
+};
 
 // Owner-facing status messages
 const ownerStatusInfo: Record<string, { title: string; message: string }> = {
-  planning: {
-    title: "Planning",
-    message: "We're reviewing your property details. We'll update you once the team has reviewed your submission.",
+  submitted: {
+    title: "Waiting for Approval",
+    message: "We've sent your photos and location to Manta Ray Energy. We'll update you once the team has reviewed your submission.",
+  },
+  photo_review: {
+    title: "Waiting for Approval",
+    message: "We've sent your photos and location to Manta Ray Energy. We'll update you once the team has reviewed your submission.",
+  },
+  quote_pending: {
+    title: "Getting Quotes",
+    message: "We're gathering quotes from scaffolders. We'll be in touch once we have a price for you.",
+  },
+  quote_submitted: {
+    title: "Getting Quotes",
+    message: "Quotes are being reviewed. We'll update you shortly with the approved price.",
+  },
+  negotiating: {
+    title: "Finalising Price",
+    message: "We're finalising the best price for your installation. We'll confirm shortly.",
   },
   scheduled: {
     title: "Scheduled",
@@ -128,12 +174,11 @@ export default function JobDetail() {
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [siteReport, setSiteReport] = useState<any>(null);
   const [mapsKey, setMapsKey] = useState("");
-
-  function resolveSetting(key: string): boolean {
-    const settings = (job as any)?.job_settings || {};
-    if (key in settings) return settings[key] !== false;
-    return true; // default: everything enabled
-  }
+  const [safetyChecklistOpen, setSafetyChecklistOpen] = useState(false);
+  const [safetyChecklistComplete, setSafetyChecklistComplete] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [inviteData, setInviteData] = useState<{ url: string; message: string } | null>(null);
+  const [copyLabel, setCopyLabel] = useState<"url" | "msg" | null>(null);
 
   const fetchAll = useCallback(async () => {
     if (!id) return;
@@ -182,6 +227,17 @@ export default function JobDetail() {
       const { data: report } = await (supabase as any)
         .from("site_reports").select("id, status").eq("job_id", id).maybeSingle();
       if (report) setSiteReport(report);
+    }
+
+    // Fetch safety checklist status for engineer + admin
+    if ((role === "engineer" || role === "admin") && user?.id) {
+      const query = (supabase as any)
+        .from("safety_checklists")
+        .select("id")
+        .eq("job_id", id);
+      if (role === "engineer") query.eq("engineer_id", user.id);
+      const { data: checklist } = await query.maybeSingle();
+      if (checklist) setSafetyChecklistComplete(true);
     }
 
     setLoading(false);
@@ -268,7 +324,7 @@ export default function JobDetail() {
         setJob((prev: any) => prev ? { ...prev, status: newStatus, updated_at: new Date().toISOString() } : prev);
       }
 
-      toast({ title: `Status → ${STATUS_LABELS[newStatus]}` });
+      toast({ title: `Status → ${statusMap[newStatus]}` });
       logAudit(user?.id, "status_change", "job", id, { from: oldStatus, to: newStatus });
       const assignedIds = assignments.map((a) => a.scaffolder_id);
       notifyStatusChange(id!, job.title, newStatus, job.owner_id, assignedIds);
@@ -491,6 +547,10 @@ export default function JobDetail() {
     setGuidedUploadOpen(false);
     fetchAll();
     toast({ title: "Photos submitted for review" });
+    if (job.status === "draft") {
+      await supabase.from("jobs").update({ status: "submitted" as any, updated_at: new Date().toISOString() }).eq("id", id);
+      setJob((prev: any) => ({ ...prev, status: "submitted" }));
+    }
     if (user?.id && id) {
       notifyOwnerPhotoSubmitted(user.id, job.title, id);
     }
@@ -528,7 +588,7 @@ export default function JobDetail() {
       doc.text(`Coordinates: ${job.lat.toFixed(6)}, ${job.lng.toFixed(6)}`, 15, y); y += 7;
     }
     doc.text(`Created: ${new Date(job.created_at).toLocaleDateString("en-GB")}`, 15, y); y += 7;
-    doc.text(`Status: ${STATUS_LABELS[job.status] || job.status}`, 15, y); y += 12;
+    doc.text(`Status: ${statusMap[job.status] || job.status}`, 15, y); y += 12;
 
     // Add static map image
     if (mapsKey && job.lat && job.lng) {
@@ -594,6 +654,133 @@ export default function JobDetail() {
     }
   };
 
+  const handleShareInvite = async () => {
+    // Fetch existing invite token or create new one
+    const { data: existing } = await (supabase as any)
+      .from("job_invites")
+      .select("token")
+      .eq("job_id", id)
+      .maybeSingle();
+
+    const token = existing?.token || (await import("@/lib/inviteUtils")).generateInviteToken();
+
+    if (!existing?.token) {
+      await supabase.from("job_invites").insert({ job_id: id, token, created_by: user?.id } as any);
+    }
+
+    const url = buildInviteUrl(token);
+    const message = buildInviteMessage(job.case_no || "", url);
+    setInviteData({ url, message });
+    setShareOpen(true);
+  };
+
+  const handleCopy = async (text: string, which: "url" | "msg") => {
+    await navigator.clipboard.writeText(text);
+    setCopyLabel(which);
+    setTimeout(() => setCopyLabel(null), 1500);
+  };
+
+  const handleExportSafetyChecklistPdf = async () => {
+    if (!id) return;
+    toast({ title: "Generating safety checklist PDF..." });
+    try {
+      const { data: checklist } = await (supabase as any)
+        .from("safety_checklists")
+        .select("*")
+        .eq("job_id", id)
+        .maybeSingle();
+      if (!checklist) { toast({ title: "No checklist found", variant: "destructive" }); return; }
+
+      const { default: jsPDF } = await import("jspdf");
+      const doc = new jsPDF();
+      const pw = doc.internal.pageSize.getWidth();
+      let y = 20;
+
+      doc.setFillColor(249, 115, 22);
+      doc.rect(0, 0, pw, 30, "F");
+      doc.setTextColor(255);
+      doc.setFontSize(16);
+      doc.text("Safety Checklist", 15, 15);
+      doc.setFontSize(10);
+      doc.text(`Job: ${job.title}`, 15, 22);
+
+      y = 38;
+      doc.setTextColor(0);
+      doc.setFontSize(10);
+
+      const savedItems = checklist.items || [];
+      const itemLabels: Record<string, string> = {
+        ppe: "PPE worn", ladder: "Ladder safety", electrical: "Electrical isolation",
+        weather: "Weather conditions safe", roof: "Roof condition assessed",
+        communication: "Communication plan", site: "Site hazards identified",
+        fire: "Fire safety", firstaid: "First aid kit available",
+        signoff: "Toolbox talk completed", building_photo: "Building exterior photo",
+      };
+
+      doc.setFontSize(12);
+      doc.text("Checklist Items", 15, y); y += 8;
+
+      for (const item of savedItems) {
+        const label = itemLabels[item.id] || item.id;
+        doc.setFontSize(10);
+        doc.text(`${item.checked ? "✓" : "✗"}  ${label}`, 20, y); y += 6;
+      }
+
+      if (checklist.notes) {
+        y += 4;
+        doc.setFontSize(12);
+        doc.text("Notes", 15, y); y += 6;
+        doc.setFontSize(10);
+        const splitNotes = doc.splitTextToSize(checklist.notes, pw - 30);
+        doc.text(splitNotes, 20, y);
+        y += splitNotes.length * 5 + 4;
+      }
+
+      // Add building photo if available
+      if (checklist.building_photo_url) {
+        if (y > 200) { doc.addPage(); y = 20; }
+        doc.setFontSize(12);
+        doc.text("Building Exterior Photo", 15, y); y += 6;
+        try {
+          const img = await new Promise<string>((resolve, reject) => {
+            const imgEl = new Image();
+            imgEl.crossOrigin = "anonymous";
+            imgEl.onload = () => {
+              const c = document.createElement("canvas");
+              c.width = imgEl.width; c.height = imgEl.height;
+              c.getContext("2d")!.drawImage(imgEl, 0, 0);
+              resolve(c.toDataURL("image/jpeg"));
+            };
+            imgEl.onerror = reject;
+            imgEl.src = checklist.building_photo_url;
+          });
+          doc.addImage(img, "JPEG", 15, y, pw - 30, 80);
+          y += 85;
+        } catch { /* skip image */ }
+      }
+
+      y += 4;
+      doc.setFontSize(9);
+      doc.setTextColor(128);
+      doc.text(`Completed: ${new Date(checklist.created_at).toLocaleDateString("en-GB")}`, 15, y);
+
+      const filename = `safety-checklist-${id.slice(0, 8)}.pdf`;
+      const blob = doc.output("blob");
+      const file = new File([blob], filename, { type: "application/pdf" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: "Safety Checklist", files: [file] }).catch(() => {});
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+      }
+    } catch (err: any) {
+      toast({ title: "PDF generation failed", description: err.message, variant: "destructive" });
+    }
+  };
+
   const handleShareOrPrint = async () => {
     if (!id) return;
     toast({ title: "Generating PDF..." });
@@ -633,6 +820,7 @@ export default function JobDetail() {
   if (loading) return <div className="p-8 text-muted-foreground">Loading...</div>;
   if (!job) return <div className="p-8 text-muted-foreground">Job not found</div>;
 
+  const available = transitions[job.status] || [];
   const assignedIds = assignments.map((a) => a.scaffolder_id);
   const assignedScaffolderIds = assignments.filter(a => a.assignment_role !== "engineer").map(a => a.scaffolder_id);
   const assignedEngineerIds = assignments.filter(a => a.assignment_role === "engineer").map(a => a.scaffolder_id);
@@ -640,9 +828,9 @@ export default function JobDetail() {
   const hasEngineer = assignedEngineerIds.length > 0;
   const allScaffolders = scaffolders;
   const allEngineers = engineers;
-  const showScheduling = ["scheduled", "in_progress"].includes(job.status) || job.scheduled_date;
+  const showScheduling = ["scheduled", "in_progress", "quote_submitted", "negotiating"].includes(job.status) || job.scheduled_date;
   const showSiteReport = ["in_progress", "completed"].includes(job.status);
-  const canEdit = role === "admin" || (role === "owner" && job.owner_id === user?.id && resolveSetting("owner_can_edit_address"));
+  const canEdit = role === "admin" || (role === "owner" && job.owner_id === user?.id);
 
   const chatRecipients: Record<string, string[]> = {
     admin_scaffolder: [...adminIds, ...assignedIds],
@@ -660,6 +848,17 @@ export default function JobDetail() {
   const scaffolderAfterPhotos = photos.filter(p => scaffolderIds.has(p.uploader_id || "") && (p as any).photo_category === "after");
   const engineerBeforePhotos = photos.filter(p => engineerIds.has(p.uploader_id || "") && (p as any).photo_category === "before");
   const engineerAfterPhotos = photos.filter(p => engineerIds.has(p.uploader_id || "") && (p as any).photo_category === "after");
+
+  // Engineer status actions — show Start Working when scheduled, Mark as Finished when in_progress with submitted report
+  const engineerActions: { label: string; status: string }[] = [];
+  if (role === "engineer") {
+    if (job.status === "scheduled") {
+      engineerActions.push({ label: "Start Working", status: "in_progress" });
+    }
+    if (job.status === "in_progress" && siteReport?.status === "submitted") {
+      engineerActions.push({ label: "Mark as Finished", status: "completed" });
+    }
+  }
 
   const ownerStatus = ownerStatusInfo[job.status];
 
@@ -680,7 +879,7 @@ export default function JobDetail() {
       )}
 
       {/* Owner Status Card */}
-      {role === "owner" && ownerStatus && resolveSetting("owner_can_see_status") && (
+      {role === "owner" && ownerStatus && (
         <Card className="card-elevated border-primary/20">
           <CardContent className="p-5 text-center space-y-2">
             {job.status === "completed" ? (
@@ -722,8 +921,8 @@ export default function JobDetail() {
             </div>
             <div className="flex items-center gap-2">
               {role !== "owner" && (
-                <Badge variant={STATUS_VARIANTS[job.status] as any} className="whitespace-nowrap">
-                  {STATUS_LABELS[job.status]}
+                <Badge variant={statusVariantOf(job.status) as any} className="whitespace-nowrap">
+                  {statusMap[job.status]}
                 </Badge>
               )}
               {canEdit && role !== "owner" && (
@@ -768,7 +967,7 @@ export default function JobDetail() {
           )}
 
           {/* Owner: show final price if set */}
-          {role === "owner" && (job as any).final_price && resolveSetting("owner_can_see_docs") && (
+          {role === "owner" && (job as any).final_price && (
             <div className="pt-3 border-t border-border">
               <div className="bg-success/5 border border-success/20 rounded-xl p-4 text-center">
                 <p className="text-xs text-muted-foreground mb-1">Approved Price</p>
@@ -830,18 +1029,32 @@ export default function JobDetail() {
           {/* Admin actions */}
           {role === "admin" && (
             <div className="pt-3 border-t border-border space-y-3">
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">Update Status</p>
-                <StatusDropdown
-                  currentStatus={job.status}
-                  role={role || ""}
-                  onChange={updateStatus}
-                />
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" className="text-xs" onClick={handleShareInvite}>
+                  <Share2 className="h-3 w-3 mr-1" /> Share with Owner
+                </Button>
               </div>
+              {available.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Update Status</p>
+                  <div className="flex flex-wrap gap-2">
+                    {available.map((s) => (
+                      <Button key={s} variant="outline" size="sm" className="text-xs" onClick={() => updateStatus(s)}>
+                        {statusMap[s] || s}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="flex flex-wrap gap-2">
                 {showSiteReport && (
                   <Button size="sm" variant="outline" className="text-xs" onClick={() => navigate(`/jobs/${id}/report`)}>
                     <ClipboardList className="h-3 w-3 mr-1" /> Site Report
+                  </Button>
+                )}
+                {safetyChecklistComplete && (
+                  <Button size="sm" variant="outline" className="text-xs" onClick={handleExportSafetyChecklistPdf}>
+                    <ShieldCheck className="h-3 w-3 mr-1" /> Safety Checklist PDF
                   </Button>
                 )}
                 <Button size="sm" variant="outline" className="text-xs" onClick={handleShareOrPrint}>
@@ -855,26 +1068,42 @@ export default function JobDetail() {
             </div>
           )}
 
-          {/* Job Settings (Admin only) */}
-          {role === "admin" && (
-            <div className="pt-3 border-t border-border mt-3">
-              <JobSettingsPanel jobId={id!} currentSettings={(job as any)?.job_settings || {}} onUpdated={fetchAll} />
-            </div>
-          )}
-
           {/* Engineer actions */}
           {role === "engineer" && (
             <div className="pt-3 border-t border-border space-y-3">
-              {showSiteReport && resolveSetting("engineer_can_edit_site_report") && (
+              {showSiteReport && (
                 <Button size="sm" onClick={() => navigate(`/jobs/${id}/report`)}>
                   <ClipboardList className="h-4 w-4 mr-1" /> Complete Site Report
                 </Button>
               )}
-              <StatusDropdown
-                currentStatus={job.status}
-                role={role || ""}
-                onChange={updateStatus}
-              />
+              {engineerActions.map((ea) => (
+                <Button
+                  key={ea.status}
+                  size="sm"
+                  variant="outline"
+                  className="text-xs"
+                  onClick={() => {
+                    if (ea.status === "in_progress") {
+                      setSafetyChecklistOpen(true);
+                    } else {
+                      updateStatus(ea.status);
+                    }
+                  }}
+                >
+                  {ea.status === "in_progress" ? <ShieldCheck className="h-3 w-3 mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
+                  {ea.label}
+                </Button>
+              ))}
+              {/* Show safety checklist status when in progress */}
+              {job.status === "in_progress" && safetyChecklistComplete && (
+                <div className="flex items-center gap-2 text-xs text-success">
+                  <ShieldCheck className="h-3 w-3" />
+                  <span>Safety checklist completed</span>
+                  <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleExportSafetyChecklistPdf}>
+                    <Printer className="h-3 w-3 mr-1" /> Export PDF
+                  </Button>
+                </div>
+              )}
               <Button size="sm" variant="outline" className="text-xs" onClick={handleShareOrPrint}>
                 {canShareFiles ? <Share2 className="h-3 w-3 mr-1" /> : <Printer className="h-3 w-3 mr-1" />}
                 {canShareFiles ? "Share PDF" : "Download PDF"}
@@ -888,7 +1117,7 @@ export default function JobDetail() {
       {showScheduling && role !== "owner" && <SchedulingPanel job={job} role={role} onUpdate={fetchAll} />}
 
       {/* Guided Photo Upload for Owners — only if photos haven't been submitted yet */}
-      {role === "owner" && ["awaiting_owner_details", "planning"].includes(job.status) && resolveSetting("owner_can_upload_photos") && (
+      {role === "owner" && ["draft"].includes(job.status) && (
         <Card className="card-elevated border-primary/20">
           <CardContent className="p-4">
             {guidedUploadOpen ? (
@@ -925,7 +1154,7 @@ export default function JobDetail() {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent>
-                {role === "scaffolder" && resolveSetting("scaffolder_can_submit_quotes") && (
+                {role === "scaffolder" && (
                   <div className="mb-3">
                     <Button size="sm" variant="outline" className="text-xs" onClick={() => setQuoteOpen(true)}>
                       <Send className="h-3 w-3 mr-1" /> Submit Quote
@@ -976,7 +1205,7 @@ export default function JobDetail() {
           <CollapsibleContent>
             <CardContent>
               {/* Upload button for owner additional photos */}
-              {(role === "admin" || (role === "owner" && resolveSetting("owner_can_upload_photos"))) && (
+              {(role === "owner" || role === "admin") && (
                 <div className="mb-3">
                   <label className="cursor-pointer">
                     <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
@@ -1034,7 +1263,7 @@ export default function JobDetail() {
             <div className="border border-border rounded-xl p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Before Scaffolding</p>
-                {role === "scaffolder" && resolveSetting("scaffolder_can_upload_photos") && (
+                {role === "scaffolder" && (
                   <label className="cursor-pointer">
                     <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={(e) => handlePhotoUpload(e, "before")} disabled={uploading} />
                     <Button size="sm" variant="outline" className="text-xs h-7 pointer-events-none" asChild>
@@ -1058,7 +1287,7 @@ export default function JobDetail() {
             <div className="border border-border rounded-xl p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">After Scaffolding</p>
-                {role === "scaffolder" && resolveSetting("scaffolder_can_upload_photos") && (
+                {role === "scaffolder" && (
                   <label className="cursor-pointer">
                     <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={(e) => handlePhotoUpload(e, "after")} disabled={uploading} />
                     <Button size="sm" variant="outline" className="text-xs h-7 pointer-events-none" asChild>
@@ -1096,7 +1325,7 @@ export default function JobDetail() {
             <div className="border border-border rounded-xl p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Before Roof Work</p>
-                {role === "engineer" && resolveSetting("engineer_can_upload_photos") && (
+                {role === "engineer" && (
                   <label className="cursor-pointer">
                     <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={(e) => handlePhotoUpload(e, "before")} disabled={uploading} />
                     <Button size="sm" variant="outline" className="text-xs h-7 pointer-events-none" asChild>
@@ -1120,7 +1349,7 @@ export default function JobDetail() {
             <div className="border border-border rounded-xl p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">After Roof Work</p>
-                {role === "engineer" && resolveSetting("engineer_can_upload_photos") && (
+                {role === "engineer" && (
                   <label className="cursor-pointer">
                     <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={(e) => handlePhotoUpload(e, "after")} disabled={uploading} />
                     <Button size="sm" variant="outline" className="text-xs h-7 pointer-events-none" asChild>
@@ -1147,10 +1376,6 @@ export default function JobDetail() {
 
       {/* Private Chat Channels — Admin↔Scaffolder and Admin↔Engineer only */}
       {role !== "owner" && (
-        (role === "admin" && (resolveSetting("scaffolder_can_chat") || resolveSetting("engineer_can_chat"))) ||
-        (role === "scaffolder" && resolveSetting("scaffolder_can_chat")) ||
-        (role === "engineer" && resolveSetting("engineer_can_chat"))
-      ) && (
         <Card className="card-elevated">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -1161,27 +1386,19 @@ export default function JobDetail() {
             {role === "admin" ? (
               <Tabs value={chatTab} onValueChange={setChatTab}>
                 <TabsList className="w-full mb-3">
-                  {resolveSetting("scaffolder_can_chat") && (
-                    <TabsTrigger value="admin_scaffolder" className="flex-1 text-xs">Scaffolder</TabsTrigger>
-                  )}
-                  {resolveSetting("engineer_can_chat") && (
-                    <TabsTrigger value="admin_engineer" className="flex-1 text-xs">Engineer</TabsTrigger>
-                  )}
+                  <TabsTrigger value="admin_scaffolder" className="flex-1 text-xs">Scaffolder</TabsTrigger>
+                  <TabsTrigger value="admin_engineer" className="flex-1 text-xs">Engineer</TabsTrigger>
                 </TabsList>
-                {resolveSetting("scaffolder_can_chat") && (
-                  <TabsContent value="admin_scaffolder">
-                    <JobComments jobId={id!} channel="admin_scaffolder" jobTitle={job.title} recipientIds={chatRecipients.admin_scaffolder} />
-                  </TabsContent>
-                )}
-                {resolveSetting("engineer_can_chat") && (
-                  <TabsContent value="admin_engineer">
-                    <JobComments jobId={id!} channel="admin_engineer" jobTitle={job.title} recipientIds={chatRecipients.admin_engineer} />
-                  </TabsContent>
-                )}
+                <TabsContent value="admin_scaffolder">
+                  <JobComments jobId={id!} channel="admin_scaffolder" jobTitle={job.title} recipientIds={chatRecipients.admin_scaffolder} />
+                </TabsContent>
+                <TabsContent value="admin_engineer">
+                  <JobComments jobId={id!} channel="admin_engineer" jobTitle={job.title} recipientIds={chatRecipients.admin_engineer} />
+                </TabsContent>
               </Tabs>
-            ) : role === "scaffolder" && resolveSetting("scaffolder_can_chat") ? (
+            ) : role === "scaffolder" ? (
               <JobComments jobId={id!} channel="admin_scaffolder" jobTitle={job.title} recipientIds={chatRecipients.admin_scaffolder} />
-            ) : role === "engineer" && resolveSetting("engineer_can_chat") ? (
+            ) : role === "engineer" ? (
               <JobComments jobId={id!} channel="admin_engineer" jobTitle={job.title} recipientIds={chatRecipients.admin_engineer} />
             ) : null}
           </CardContent>
@@ -1334,9 +1551,9 @@ export default function JobDetail() {
                 <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={job.status}>{STATUS_LABELS[job.status]} (current)</SelectItem>
-                    {(STATUS_TRANSITIONS[job.status] || []).map((s) => (
-                      <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                    <SelectItem value={job.status}>{statusMap[job.status]} (current)</SelectItem>
+                    {(transitions[job.status] || []).map((s) => (
+                      <SelectItem key={s} value={s}>{statusMap[s]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1371,6 +1588,51 @@ export default function JobDetail() {
           </Button>
           <img src={fullscreenPhoto} alt="Full size photo" className="max-w-full max-h-full object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
         </div>
+      )}
+
+      {/* Share with Owner Dialog (Admin only) */}
+      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Share with System Owner</DialogTitle>
+          </DialogHeader>
+          {inviteData && (
+            <div className="space-y-4 pt-1">
+              <div className="space-y-1.5">
+                <Label className="text-xs flex items-center gap-1"><Link2 className="h-3 w-3" /> Secure Invite Link</Label>
+                <div className="flex gap-2">
+                  <Input value={inviteData.url} readOnly className="text-xs" />
+                  <Button size="sm" variant="outline" onClick={() => handleCopy(inviteData.url, "url")}>
+                    {copyLabel === "url" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs flex items-center gap-1"><MessageSquare className="h-3 w-3" /> Suggested Message</Label>
+                <Textarea value={inviteData.message} readOnly rows={6} className="text-xs" />
+                <Button size="sm" variant="outline" className="w-full" onClick={() => handleCopy(inviteData.message, "msg")}>
+                  {copyLabel === "msg" ? <><Check className="h-3.5 w-3.5 mr-1" /> Copied</> : <><Copy className="h-3.5 w-3.5 mr-1" /> Copy Message</>}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Safety Checklist Dialog (Engineer only) */}
+      {role === "engineer" && user?.id && (
+        <SafetyChecklistDialog
+          open={safetyChecklistOpen}
+          onOpenChange={setSafetyChecklistOpen}
+          jobId={id!}
+          engineerId={user.id}
+          onComplete={() => {
+            setSafetyChecklistComplete(true);
+            setSafetyChecklistOpen(false);
+            // Now actually update the job status to in_progress
+            updateStatus("in_progress");
+          }}
+        />
       )}
     </div>
   );

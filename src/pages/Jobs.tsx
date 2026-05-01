@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Briefcase, FileSpreadsheet, ArrowUpRight, MapPin, X, LayoutList, Columns2 } from "lucide-react";
+import { Plus, Search, Briefcase, FileSpreadsheet, ArrowUpRight, MapPin, X, LayoutList, Columns2, Clock, HardHat, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { AdminCreateJobDialog } from "@/components/jobs/AdminCreateJobDialog";
@@ -21,7 +21,7 @@ const filterTabs = [
 ];
 
 export default function Jobs() {
-  const { role } = useAuth();
+  const { role, profile } = useAuth();
   const [jobs, setJobs] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -39,6 +39,15 @@ export default function Jobs() {
     if (data) setJobs(data);
     setLoading(false);
   };
+
+  // KPI counts from the full job list
+  const pendingCount = jobs.filter((j) => PENDING_STATUSES.includes(j.status)).length;
+  const inFlightCount = jobs.filter((j) => ACTIVE_FILTER_STATUSES.includes(j.status)).length;
+  const completedCount = jobs.filter((j) => j.status === "completed").length;
+  const completionRate = jobs.length > 0 ? Math.round((completedCount / jobs.length) * 100) : 0;
+
+  const firstName = profile?.first_name || "";
+  const roleLabel = role === "owner" ? "System Owner" : role ? role.charAt(0).toUpperCase() + role.slice(1) : "";
 
   useEffect(() => { fetchJobs(); }, []);
 
@@ -79,33 +88,90 @@ export default function Jobs() {
         <div className="p-4 lg:p-10 max-w-7xl mx-auto">
           <div className="flex flex-wrap items-end justify-between gap-4 animate-em-enter">
             <div className="space-y-2 min-w-0">
-              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Jobs</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">{roleLabel} · overview</span>
               <h1 className="font-display text-4xl lg:text-5xl leading-[1.02] tracking-tight text-foreground">
-                Every <span className="font-display-italic text-primary">install</span>,
-                <br className="hidden sm:block" /> in one ledger.
+                {firstName ? (
+                  <>Welcome back, <span className="font-display-italic text-primary">{firstName}.</span></>
+                ) : (
+                  <>Every <span className="font-display-italic text-primary">install</span>,<br className="hidden sm:block" /> in one ledger.</>
+                )}
               </h1>
               <p className="text-sm text-muted-foreground">
-                {loading ? "Loading…" : `${filtered.length} ${statusFilter ? filterTabs.find(t => t.key === statusFilter)?.label?.toLowerCase() || statusFilter : "total"} job${filtered.length === 1 ? "" : "s"}`}
+                {loading ? "Loading…" : `${inFlightCount} in flight · ${pendingCount} waiting · ${completionRate}% complete · ${filtered.length} ${statusFilter ? filterTabs.find(t => t.key === statusFilter)?.label?.toLowerCase() || statusFilter : "total"} job${filtered.length === 1 ? "" : "s"}`}
               </p>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              {role === "admin" && (
-                <>
-                  <Button size="sm" variant="outline" onClick={handleExport} disabled={exporting}>
-                    <FileSpreadsheet className="h-4 w-4" />
-                    {exporting ? "Exporting…" : "Export"}
-                  </Button>
-                  <Button size="sm" onClick={() => setCreateOpen(true)} className="shadow-sm hover:shadow-glow">
+            <div className="flex items-center gap-4 flex-wrap">
+              {jobs.length > 0 && (
+                <div className="flex items-baseline gap-2">
+                  <div className="font-display text-5xl lg:text-6xl tabular-nums text-foreground leading-none">
+                    {completionRate}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-display text-xl text-primary leading-none">%</span>
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mt-1">done</span>
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-2 flex-wrap">
+                {role === "admin" && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={handleExport} disabled={exporting}>
+                      <FileSpreadsheet className="h-4 w-4" />
+                      {exporting ? "Exporting…" : "Export"}
+                    </Button>
+                    <Button size="sm" onClick={() => setCreateOpen(true)} className="shadow-sm hover:shadow-glow">
+                      <Plus className="h-4 w-4" /> New job
+                    </Button>
+                  </>
+                )}
+                {role === "owner" && (
+                  <Button size="sm" onClick={() => navigate("/new-job")} className="shadow-sm hover:shadow-glow">
                     <Plus className="h-4 w-4" /> New job
                   </Button>
-                </>
-              )}
-              {role === "owner" && (
-                <Button size="sm" onClick={() => navigate("/new-job")} className="shadow-sm hover:shadow-glow">
-                  <Plus className="h-4 w-4" /> New job
-                </Button>
-              )}
+                )}
+              </div>
             </div>
+          </div>
+
+          {/* KPI cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-3 mt-6">
+            {([
+              { label: "Total", value: jobs.length, icon: Briefcase, tone: "primary", filter: "" },
+              { label: "Pending", value: pendingCount, icon: Clock, tone: "pending", filter: "pending" },
+              { label: "In flight", value: inFlightCount, icon: HardHat, tone: "active", filter: "active" },
+              { label: "Completed", value: completedCount, icon: CheckCircle2, tone: "complete", filter: "completed" },
+            ] as const).map((kpi, i) => {
+              const Icon = kpi.icon;
+              const toneClasses: Record<string, string> = {
+                primary: "bg-primary-soft text-primary ring-primary/20",
+                pending: "bg-status-pending-soft text-status-pending ring-status-pending/20",
+                active: "bg-status-active-soft text-status-active ring-status-active/20",
+                complete: "bg-status-complete-soft text-status-complete ring-status-complete/20",
+              };
+              return (
+                <button
+                  key={kpi.label}
+                  onClick={() => kpi.filter ? setFilter(kpi.filter) : setFilter("")}
+                  className={cn(
+                    "group text-left rounded-lg bg-card ring-1 ring-border/80 p-3 lg:p-4",
+                    "shadow-xs hover:shadow-md hover-lift",
+                    "transition-[transform,box-shadow,border-color] duration-soft ease-spring",
+                  )}
+                  style={{ animationDelay: `${140 + i * 60}ms` }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className={cn("h-7 w-7 rounded-md ring-1 flex items-center justify-center", toneClasses[kpi.tone])}>
+                      <Icon className="h-3.5 w-3.5" />
+                    </div>
+                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground transition-colors duration-quick -translate-x-1 group-hover:translate-x-0" />
+                  </div>
+                  <div className="font-display text-2xl lg:text-3xl leading-none tabular-nums text-foreground">
+                    {loading ? <span className="inline-block h-6 w-6 bg-muted rounded animate-pulse" /> : kpi.value}
+                  </div>
+                  <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground mt-1.5">{kpi.label}</div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -182,7 +248,7 @@ export default function Jobs() {
         {/* List */}
         {viewMode === "kanban" && role === "admin" ? (
           <div className="animate-em-enter" style={{ animationDelay: "160ms" }}>
-            <KanbanBoard />
+            <KanbanBoard onStatusChange={fetchJobs} />
           </div>
         ) : loading ? (
           <div className="rounded-lg bg-card ring-1 ring-border/80 divide-y divide-border/60">

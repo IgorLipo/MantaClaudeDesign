@@ -152,3 +152,15 @@ export async function notifySiteReportSubmitted(jobId: string, jobTitle: string,
     });
   }
 }
+
+export async function notifySafetyChecklistComplete(jobId: string, notes: string, engineerId: string) {
+  const adminIds = await getAdminIds();
+  for (const aid of adminIds) {
+    await notify({
+      userId: aid, type: "safety_checklist",
+      title: "Safety Checklist Completed",
+      message: `Engineer has completed the safety checklist for job #${jobId.slice(0, 8)}.${notes ? ` Notes: ${notes.slice(0, 100)}` : ""}`,
+      data: { job_id: jobId, engineer_id: engineerId },
+    });
+  }
+}

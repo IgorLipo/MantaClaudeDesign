@@ -181,25 +181,25 @@ export default function Dashboard() {
                 <button
                   key={job.id}
                   onClick={() => navigate(`/jobs/${job.id}`)}
-                  className="group w-full px-5 py-3.5 flex items-center gap-4 hover:bg-subtle/60 transition-colors duration-quick text-left"
+                  className="group w-full px-3 sm:px-5 py-3 flex items-center gap-2 sm:gap-4 hover:bg-subtle/60 transition-colors duration-quick text-left"
                 >
                   {job.case_no && (
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70 w-20 truncate shrink-0">
+                    <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground/70 w-16 sm:w-20 truncate shrink-0">
                       {job.case_no}
                     </span>
                   )}
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors duration-quick">
+                    <div className="text-xs sm:text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors duration-quick">
                       {job.title}
                     </div>
                     {job.address && (
-                      <div className="text-xs text-muted-foreground truncate mt-0.5">{job.address}</div>
+                      <div className="text-[10px] sm:text-xs text-muted-foreground truncate mt-0.5">{job.address}</div>
                     )}
                   </div>
-                  <Badge variant={STATUS_VARIANTS[job.status] as any} className="shrink-0">
+                  <Badge variant={STATUS_VARIANTS[job.status] as any} className="shrink-0 text-[9px] px-1.5 py-0 h-5 leading-none">
                     {STATUS_LABELS[job.status] || job.status}
                   </Badge>
-                  <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground transition-[color,transform] duration-quick -translate-x-1 group-hover:translate-x-0 shrink-0" />
+                  <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground transition-[color,transform] duration-quick -translate-x-1 group-hover:translate-x-0 shrink-0" />
                 </button>
               ))
             )}

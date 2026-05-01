@@ -1,15 +1,14 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Copy, Check, Link2, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { logAudit } from "@/hooks/useAuditLog";
-import { generateInviteToken, buildInviteUrl, buildInviteMessage } from "@/lib/inviteUtils";
+import { generateInviteToken } from "@/lib/inviteUtils";
 
 interface Props {
   open: boolean;
@@ -20,16 +19,13 @@ interface Props {
 export function AdminCreateJobDialog({ open, onOpenChange, onCreated }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [caseNo, setCaseNo] = useState("");
   const [title, setTitle] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [created, setCreated] = useState<{ jobId: string; url: string; message: string } | null>(null);
-  const [copiedUrl, setCopiedUrl] = useState(false);
-  const [copiedMsg, setCopiedMsg] = useState(false);
 
   const reset = () => {
-    setCaseNo(""); setTitle(""); setCreated(null);
-    setCopiedUrl(false); setCopiedMsg(false);
+    setCaseNo(""); setTitle("");
   };
 
   const handleClose = (v: boolean) => {
@@ -41,7 +37,7 @@ export function AdminCreateJobDialog({ open, onOpenChange, onCreated }: Props) {
     if (!user || !caseNo.trim()) return;
     setSubmitting(true);
 
-    // 1. Create draft job in awaiting_owner_details state
+    // 1. Create draft job
     const { data: job, error: jobErr } = await supabase
       .from("jobs")
       .insert({
@@ -63,7 +59,7 @@ export function AdminCreateJobDialog({ open, onOpenChange, onCreated }: Props) {
       return;
     }
 
-    // Merge global default settings into the new job
+    // Merge global default settings
     const { data: adminSettings } = await supabase
       .from("admin_settings")
       .select("default_job_settings")
@@ -77,95 +73,58 @@ export function AdminCreateJobDialog({ open, onOpenChange, onCreated }: Props) {
         .eq("id", job.id);
     }
 
-    // 2. Generate invite token
+    // 2. Generate invite token (stored, but not shown immediately)
     const token = generateInviteToken();
-    const { error: inviteErr } = await supabase.from("job_invites").insert({
+    await supabase.from("job_invites").insert({
       job_id: job.id,
       token,
       created_by: user.id,
     } as any);
 
-    if (inviteErr) {
-      toast({ title: "Job created, but invite failed", description: inviteErr.message, variant: "destructive" });
-      setSubmitting(false);
-      return;
-    }
-
-    const url = buildInviteUrl(token);
-    const message = buildInviteMessage(caseNo.trim(), url);
-
     logAudit(user.id, "admin_job_created", "job", job.id, { case_no: caseNo.trim() });
-    toast({ title: "Job created — share the link below" });
-    setCreated({ jobId: job.id, url, message });
+    toast({ title: "Job created" });
     setSubmitting(false);
+    reset();
+    onOpenChange(false);
     onCreated?.();
-  };
 
-  const copy = async (text: string, which: "url" | "msg") => {
-    await navigator.clipboard.writeText(text);
-    if (which === "url") { setCopiedUrl(true); setTimeout(() => setCopiedUrl(false), 1500); }
-    else { setCopiedMsg(true); setTimeout(() => setCopiedMsg(false), 1500); }
+    // Navigate to the new job
+    navigate(`/jobs/${job.id}`);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{created ? "Invite Created" : "Create New Job"}</DialogTitle>
+          <DialogTitle>Create New Job</DialogTitle>
         </DialogHeader>
 
-        {!created ? (
-          <div className="space-y-3 pt-1">
-            <div className="space-y-1.5">
-              <Label className="text-xs">SolarEdge Case No. *</Label>
-              <Input
-                placeholder="e.g. SE-2025-001"
-                value={caseNo}
-                onChange={(e) => setCaseNo(e.target.value)}
-                autoFocus
-              />
-              <p className="text-[10px] text-muted-foreground">Must be unique across all jobs.</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Job Title (optional)</Label>
-              <Input
-                placeholder="Short label, e.g. Smith Residence"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-            <Button className="w-full" disabled={submitting || !caseNo.trim()} onClick={handleCreate}>
-              {submitting ? "Creating..." : "Create Job & Generate Invite"}
-            </Button>
-            <p className="text-[11px] text-muted-foreground text-center">
-              You'll get a secure shareable link to send the System Owner so they can complete the property details.
-            </p>
+        <div className="space-y-3 pt-1">
+          <div className="space-y-1.5">
+            <Label className="text-xs">SolarEdge Case No. *</Label>
+            <Input
+              placeholder="e.g. SE-2025-001"
+              value={caseNo}
+              onChange={(e) => setCaseNo(e.target.value)}
+              autoFocus
+            />
+            <p className="text-[10px] text-muted-foreground">Must be unique across all jobs.</p>
           </div>
-        ) : (
-          <div className="space-y-4 pt-1">
-            <div className="space-y-1.5">
-              <Label className="text-xs flex items-center gap-1"><Link2 className="h-3 w-3" /> Secure Invite Link</Label>
-              <div className="flex gap-2">
-                <Input value={created.url} readOnly className="text-xs" />
-                <Button size="sm" variant="outline" onClick={() => copy(created.url, "url")}>
-                  {copiedUrl ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs flex items-center gap-1"><MessageSquare className="h-3 w-3" /> Suggested Message</Label>
-              <Textarea value={created.message} readOnly rows={6} className="text-xs" />
-              <Button size="sm" variant="outline" className="w-full" onClick={() => copy(created.message, "msg")}>
-                {copiedMsg ? <><Check className="h-3.5 w-3.5 mr-1" /> Copied</> : <><Copy className="h-3.5 w-3.5 mr-1" /> Copy Message</>}
-              </Button>
-            </div>
-
-            <Button variant="outline" className="w-full" onClick={() => handleClose(false)}>
-              Done
-            </Button>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Job Title (optional)</Label>
+            <Input
+              placeholder="Short label, e.g. Smith Residence"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
           </div>
-        )}
+          <Button className="w-full" disabled={submitting || !caseNo.trim()} onClick={handleCreate}>
+            {submitting ? "Creating..." : "Create Job"}
+          </Button>
+          <p className="text-[11px] text-muted-foreground text-center">
+            You can share this job with the System Owner from the job detail page.
+          </p>
+        </div>
       </DialogContent>
     </Dialog>
   );
