@@ -75,12 +75,8 @@ export default {
           foreground: "hsl(var(--info-foreground))",
         },
         status: {
-          draft: "hsl(var(--status-draft))",
-          "draft-soft": "hsl(var(--status-draft-soft))",
           pending: "hsl(var(--status-pending))",
           "pending-soft": "hsl(var(--status-pending-soft))",
-          review: "hsl(var(--status-review))",
-          "review-soft": "hsl(var(--status-review-soft))",
           scheduled: "hsl(var(--status-scheduled))",
           "scheduled-soft": "hsl(var(--status-scheduled-soft))",
           active: "hsl(var(--status-active))",

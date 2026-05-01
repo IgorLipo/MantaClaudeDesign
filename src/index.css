@@ -48,12 +48,8 @@
     --secondary-foreground: 24 10% 10%;
 
     /* ── Semantic status ─────────────────────── */
-    --status-draft: 30 6% 55%;        /* stone */
-    --status-draft-soft: 30 8% 93%;
-    --status-pending: 38 92% 50%;     /* amber */
+    --status-pending: 38 92% 50%;     /* amber — planning */
     --status-pending-soft: 43 100% 94%;
-    --status-review: 211 96% 55%;     /* sky blue */
-    --status-review-soft: 210 100% 95%;
     --status-scheduled: 262 72% 62%;  /* violet */
     --status-scheduled-soft: 260 100% 96%;
     --status-active: 22 96% 46%;      /* ember (in_progress) */
@@ -156,12 +152,8 @@
     --secondary: 24 8% 14%;
     --secondary-foreground: 60 9% 95%;
 
-    --status-draft: 30 5% 55%;
-    --status-draft-soft: 24 8% 14%;
     --status-pending: 38 92% 58%;
     --status-pending-soft: 38 40% 15%;
-    --status-review: 211 96% 62%;
-    --status-review-soft: 211 50% 15%;
     --status-scheduled: 262 72% 70%;
     --status-scheduled-soft: 262 40% 18%;
     --status-active: 22 96% 56%;
@@ -293,17 +285,12 @@
   [data-status] {
     @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
-  [data-status="draft"]       { background: hsl(var(--status-draft-soft));       color: hsl(var(--status-draft)); }
-  [data-status="submitted"],
-  [data-status="pending"],
-  [data-status="photo_review"] { background: hsl(var(--status-pending-soft));    color: hsl(var(--status-pending)); }
-  [data-status="quote_pending"],
-  [data-status="quote_submitted"],
-  [data-status="negotiating"] { background: hsl(var(--status-review-soft));      color: hsl(var(--status-review)); }
+  [data-status="awaiting_owner_details"] { background: hsl(var(--status-cancelled-soft) / 0.5); color: hsl(var(--status-cancelled)); }
+  [data-status="planning"]   { background: hsl(var(--status-pending-soft));    color: hsl(var(--status-pending)); }
   [data-status="scheduled"]   { background: hsl(var(--status-scheduled-soft));   color: hsl(var(--status-scheduled)); }
   [data-status="in_progress"] { background: hsl(var(--status-active-soft));      color: hsl(var(--status-active)); }
   [data-status="completed"]   { background: hsl(var(--status-complete-soft));    color: hsl(var(--status-complete)); }
-  [data-status="cancelled"]   { background: hsl(var(--status-cancelled-soft));   color: hsl(var(--status-cancelled)); }
+  [data-status="cancelled"]   { background: hsl(var(--status-cancelled-soft));    color: hsl(var(--status-cancelled)); }
 
   /* Subtle grain — ambient depth. Use `.grain` on hero sections only. */
   .grain::before {
