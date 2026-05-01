@@ -32,3 +32,8 @@ supabase/.branches/
 *.sln
 *.sw?
 .vercel
+.worktrees/
+
+# Agent skill symlinks (project-local pointers to global ~/.agents/skills/)
+.clinerules/
+.claude/skills/
