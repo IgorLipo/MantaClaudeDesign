@@ -682,7 +682,7 @@ export default function JobDetail() {
 
   const handleExportSafetyChecklistPdf = async () => {
     if (!id) return;
-    toast({ title: "Generating safety checklist PDF..." });
+    toast({ title: "Generating safety checklist PDF…" });
     try {
       const { data: checklist } = await (supabase as any)
         .from("safety_checklists")
@@ -694,53 +694,126 @@ export default function JobDetail() {
       const { default: jsPDF } = await import("jspdf");
       const doc = new jsPDF();
       const pw = doc.internal.pageSize.getWidth();
-      let y = 20;
+      const m = 20;
+      const cw = pw - m * 2;
+      let y: number;
 
-      doc.setFillColor(249, 115, 22);
-      doc.rect(0, 0, pw, 30, "F");
+      const ORANGE = [249, 115, 22] as [number, number, number];
+      const DARK = [30, 30, 30] as [number, number, number];
+      const GRAY = [130, 130, 130] as [number, number, number];
+      const LIGHT = [245, 245, 245] as [number, number, number];
+      const GREEN = [16, 185, 129] as [number, number, number];
+
+      // ── Header bar ──
+      doc.setFillColor(...ORANGE);
+      doc.rect(0, 0, pw, 54, "F");
       doc.setTextColor(255);
-      doc.setFontSize(16);
-      doc.text("Safety Checklist", 15, 15);
-      doc.setFontSize(10);
-      doc.text(`Job: ${job.title}`, 15, 22);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.text("Site Safety Checklist", m, 22);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      const engName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : "—";
+      doc.text(`Engineer: ${engName}`, m, 33);
+      doc.text(`Job: ${job.title || "—"}`, m, 39);
+      doc.text(`Case No: ${job.case_no || "—"}`, m, 45);
+      doc.text(`Date: ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}`, m, 51);
 
-      y = 38;
-      doc.setTextColor(0);
-      doc.setFontSize(10);
+      y = 64;
 
+      // ── Status badge ──
       const savedItems = checklist.items || [];
-      const itemLabels: Record<string, string> = {
-        ppe: "PPE worn", ladder: "Ladder safety", electrical: "Electrical isolation",
-        weather: "Weather conditions safe", roof: "Roof condition assessed",
-        communication: "Communication plan", site: "Site hazards identified",
-        fire: "Fire safety", firstaid: "First aid kit available",
-        signoff: "Toolbox talk completed", building_photo: "Building exterior photo",
+      const checkedCount = savedItems.filter((i: any) => i.checked).length;
+      const totalItems = savedItems.length || 11;
+      const allDone = checkedCount === totalItems && totalItems > 0;
+      doc.setFillColor(...(allDone ? GREEN : ORANGE));
+      doc.roundedRect(m, y, cw, 12, 2, 2, "F");
+      doc.setTextColor(255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.text(
+        allDone ? `ALL CHECKS PASSED  —  ${checkedCount}/${totalItems} items verified` : `${checkedCount}/${totalItems} items checked`,
+        pw / 2, y + 8, { align: "center" }
+      );
+      y += 22;
+
+      // ── Sections ──
+      const sections: Record<string, { title: string; items: { id: string; label: string }[] }> = {
+        personal: { title: "Personal Safety", items: [
+          { id: "ppe", label: "PPE worn — Hard hat, harness, gloves, steel-toe boots, hi-vis vest" },
+          { id: "ladder", label: "Ladder safety — Secure, stable ground, correct 4:1 angle ratio" },
+          { id: "communication", label: "Communication plan — Radio/phone charged, emergency contacts known, buddy system active" },
+        ]},
+        site: { title: "Site Conditions", items: [
+          { id: "electrical", label: "Electrical isolation — Array isolated, inverter off, no exposed live cables" },
+          { id: "weather", label: "Weather conditions — No high winds (>25mph), rain, ice, or lightning risk" },
+          { id: "roof", label: "Roof condition — Structure safe to walk on, no loose tiles or fragile surfaces" },
+          { id: "site", label: "Site hazards marked — Trip hazards, overhead cables, confined spaces identified" },
+        ]},
+        emergency: { title: "Emergency Preparedness", items: [
+          { id: "fire", label: "Fire safety — Extinguisher accessible, no flammables near electrical, exits clear" },
+          { id: "firstaid", label: "First aid ready — Kit on site, designated first-aider identified" },
+        ]},
+        docs: { title: "Documentation", items: [
+          { id: "signoff", label: "Toolbox talk done — All team briefed on tasks, risks, and emergency procedures" },
+          { id: "building_photo", label: "Building exterior photo captured" },
+        ]},
       };
 
-      doc.setFontSize(12);
-      doc.text("Checklist Items", 15, y); y += 8;
+      const checkedMap: Record<string, boolean> = {};
+      savedItems.forEach((i: any) => { checkedMap[i.id] = i.checked; });
 
-      for (const item of savedItems) {
-        const label = itemLabels[item.id] || item.id;
-        doc.setFontSize(10);
-        doc.text(`${item.checked ? "✓" : "✗"}  ${label}`, 20, y); y += 6;
+      for (const [_, section] of Object.entries(sections)) {
+        // Section header
+        doc.setFillColor(...LIGHT);
+        doc.roundedRect(m, y, cw, 8, 2, 2, "F");
+        doc.setTextColor(...DARK);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.text(section.title.toUpperCase(), m + 4, y + 5.8);
+        y += 13;
+
+        for (const item of section.items) {
+          const isChecked = checkedMap[item.id] || false;
+
+          // Checkbox
+          if (isChecked) {
+            doc.setDrawColor(...GREEN);
+            doc.setFillColor(...GREEN);
+          } else {
+            doc.setDrawColor(190);
+            doc.setFillColor(255);
+          }
+          doc.roundedRect(m + 2, y - 3.5, 5, 5, 1, 1, isChecked ? "FD" : "S");
+
+          if (isChecked) {
+            doc.setTextColor(255);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(6);
+            doc.text("✓", m + 3.3, y + 0.4);
+          }
+
+          doc.setTextColor(...(isChecked ? DARK : GRAY));
+          doc.setFont("helvetica", isChecked ? "bold" : "normal");
+          doc.setFontSize(8);
+          doc.text(item.label, m + 10, y);
+
+          y += 7.5;
+        }
+        y += 5;
       }
 
-      if (checklist.notes) {
-        y += 4;
-        doc.setFontSize(12);
-        doc.text("Notes", 15, y); y += 6;
-        doc.setFontSize(10);
-        const splitNotes = doc.splitTextToSize(checklist.notes, pw - 30);
-        doc.text(splitNotes, 20, y);
-        y += splitNotes.length * 5 + 4;
-      }
-
-      // Add building photo if available
+      // ── Building Photo ──
       if (checklist.building_photo_url) {
-        if (y > 200) { doc.addPage(); y = 20; }
-        doc.setFontSize(12);
-        doc.text("Building Exterior Photo", 15, y); y += 6;
+        if (y > 190) { doc.addPage(); y = 20; }
+        doc.setFillColor(...LIGHT);
+        doc.roundedRect(m, y, cw, 8, 2, 2, "F");
+        doc.setTextColor(...DARK);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.text("SITE EVIDENCE", m + 4, y + 5.8);
+        y += 14;
+
         try {
           const img = await new Promise<string>((resolve, reject) => {
             const imgEl = new Image();
@@ -754,15 +827,39 @@ export default function JobDetail() {
             imgEl.onerror = reject;
             imgEl.src = checklist.building_photo_url;
           });
-          doc.addImage(img, "JPEG", 15, y, pw - 30, 80);
-          y += 85;
-        } catch { /* skip image */ }
+          const imgH = 95;
+          doc.setDrawColor(210);
+          doc.roundedRect(m, y, cw, imgH, 3, 3, "S");
+          doc.addImage(img, "JPEG", m + 1.5, y + 1.5, cw - 3, imgH - 3);
+          y += imgH + 10;
+        } catch { /* skip */ }
       }
 
-      y += 4;
-      doc.setFontSize(9);
-      doc.setTextColor(128);
-      doc.text(`Completed: ${new Date(checklist.created_at).toLocaleDateString("en-GB")}`, 15, y);
+      // ── Notes ──
+      if (checklist.notes) {
+        if (y > 230) { doc.addPage(); y = 20; }
+        doc.setFillColor(...LIGHT);
+        doc.roundedRect(m, y, cw, 8, 2, 2, "F");
+        doc.setTextColor(...DARK);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.text("ADDITIONAL NOTES", m + 4, y + 5.8);
+        y += 14;
+
+        doc.setTextColor(...DARK);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        const splitNotes = doc.splitTextToSize(checklist.notes, cw - 4);
+        doc.text(splitNotes, m + 2, y);
+        y += splitNotes.length * 5 + 12;
+      }
+
+      // ── Footer ──
+      doc.setTextColor(...GRAY);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.text("Manta Ray Energy  ·  Site Safety Checklist", pw / 2, 290, { align: "center" });
+      doc.text(`Generated ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}`, pw / 2, 295, { align: "center" });
 
       const filename = `safety-checklist-${id.slice(0, 8)}.pdf`;
       const blob = doc.output("blob");
