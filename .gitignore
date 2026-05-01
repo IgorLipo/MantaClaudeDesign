@@ -37,3 +37,24 @@ supabase/.branches/
 # Agent skill symlinks (project-local pointers to global ~/.agents/skills/)
 .clinerules/
 .claude/skills/
+
+# Claude Code session artifacts
+.omc/
+.openclaude/
+
+# Playwright MCP output
+.playwright-mcp/
+
+# GSD planning artifacts
+get-shit-done/
+
+# Agent definitions
+agents/
+
+# Large binaries
+Login Video.mp4
+src/assets/login-background.mp4
+
+# Auto-generated reports
+QA-REPORT-MOBILE.md
+TESTING-SAFETY-CHECKLIST.md
