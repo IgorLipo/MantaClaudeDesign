@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard,
   Briefcase,
   HardHat,
   MapPin,
@@ -29,7 +28,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "scaffolder", "engineer"] },
+  { path: "/", label: "Jobs", icon: Briefcase, roles: ["admin", "scaffolder", "engineer"] },
   { path: "/my-job", label: "My Job", icon: Home, roles: ["owner"] },
   { path: "/my-quotes", label: "My Quotes", icon: ScrollText, roles: ["scaffolder"] },
   { path: "/site-reports", label: "Site Reports", icon: ScrollText, roles: ["engineer"] },
