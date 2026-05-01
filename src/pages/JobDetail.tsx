@@ -27,7 +27,7 @@ import { JobComments } from "@/components/jobs/JobComments";
 import { QuoteTimeline } from "@/components/jobs/QuoteTimeline";
 import { AdminPhotoGallery } from "@/components/jobs/AdminPhotoGallery";
 import SafetyChecklistDialog from "@/components/jobs/SafetyChecklistDialog";
-import { buildInviteUrl, buildInviteMessage } from "@/lib/inviteUtils";
+import { buildInviteUrl, buildInviteMessage, generateInviteToken } from "@/lib/inviteUtils";
 import { Textarea } from "@/components/ui/textarea";
 import {
   notifyStatusChange, notifyQuoteSubmitted, notifyQuoteDecision,
@@ -662,7 +662,7 @@ export default function JobDetail() {
       .eq("job_id", id)
       .maybeSingle();
 
-    const token = existing?.token || (await import("@/lib/inviteUtils")).generateInviteToken();
+    const token = existing?.token || generateInviteToken();
 
     if (!existing?.token) {
       await supabase.from("job_invites").insert({ job_id: id, token, created_by: user?.id } as any);
