@@ -1760,9 +1760,10 @@ export default function JobDetail() {
                 <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={job.status}>{statusMap[job.status]} (current)</SelectItem>
-                    {(transitions[job.status] || []).map((s) => (
-                      <SelectItem key={s} value={s}>{statusMap[s]}</SelectItem>
+                    {Object.entries(statusMap).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}{value === job.status ? " (current)" : ""}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
