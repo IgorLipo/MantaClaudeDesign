@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.safety_checklists (
   notes TEXT DEFAULT '',
   completed BOOLEAN NOT NULL DEFAULT false,
   completed_at TIMESTAMPTZ,
+  building_photo_url TEXT DEFAULT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   -- Each engineer can only have one checklist per job
@@ -44,7 +45,8 @@ CREATE POLICY "Owners can read safety checklists for own jobs"
 CREATE OR REPLACE FUNCTION public.upsert_safety_checklist(
   _job_id UUID,
   _items JSONB,
-  _notes TEXT DEFAULT ''
+  _notes TEXT DEFAULT '',
+  _building_photo_url TEXT DEFAULT NULL
 )
 RETURNS public.safety_checklists
 LANGUAGE plpgsql
@@ -69,12 +71,13 @@ BEGIN
   END IF;
 
   -- Upsert: one row per (job_id, engineer_id)
-  INSERT INTO public.safety_checklists (job_id, engineer_id, items, notes, completed, completed_at, updated_at)
-  VALUES (_job_id, auth.uid(), _items, _notes, true, now(), now())
+  INSERT INTO public.safety_checklists (job_id, engineer_id, items, notes, building_photo_url, completed, completed_at, updated_at)
+  VALUES (_job_id, auth.uid(), _items, _notes, _building_photo_url, true, now(), now())
   ON CONFLICT (job_id, engineer_id)
   DO UPDATE SET
     items = _items,
     notes = _notes,
+    building_photo_url = COALESCE(_building_photo_url, safety_checklists.building_photo_url),
     completed = true,
     completed_at = COALESCE(safety_checklists.completed_at, now()),
     updated_at = now()
@@ -84,8 +87,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.upsert_safety_checklist(UUID, JSONB, TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.upsert_safety_checklist(UUID, JSONB, TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION public.upsert_safety_checklist(UUID, JSONB, TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.upsert_safety_checklist(UUID, JSONB, TEXT, TEXT) TO authenticated;
 
 -- 4. Function: check if engineer has completed safety checklist for a job
 CREATE OR REPLACE FUNCTION public.has_completed_safety_checklist(_job_id UUID)
