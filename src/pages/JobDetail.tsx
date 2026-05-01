@@ -125,7 +125,7 @@ export default function JobDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { role, user } = useAuth();
+  const { role, user, profile } = useAuth();
   const { toast } = useToast();
   const [job, setJob] = useState<any>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -175,7 +175,7 @@ export default function JobDetail() {
   const [siteReport, setSiteReport] = useState<any>(null);
   const [mapsKey, setMapsKey] = useState("");
   const [safetyChecklistOpen, setSafetyChecklistOpen] = useState(false);
-  const [safetyChecklistComplete, setSafetyChecklistComplete] = useState(false);
+  const [safetyChecklistData, setSafetyChecklistData] = useState<any>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [inviteData, setInviteData] = useState<{ url: string; message: string } | null>(null);
   const [copyLabel, setCopyLabel] = useState<"url" | "msg" | null>(null);
@@ -229,15 +229,15 @@ export default function JobDetail() {
       if (report) setSiteReport(report);
     }
 
-    // Fetch safety checklist status for engineer + admin
+    // Fetch safety checklist for engineer + admin
     if ((role === "engineer" || role === "admin") && user?.id) {
       const query = (supabase as any)
         .from("safety_checklists")
-        .select("id")
+        .select("*")
         .eq("job_id", id);
       if (role === "engineer") query.eq("engineer_id", user.id);
       const { data: checklist } = await query.maybeSingle();
-      if (checklist) setSafetyChecklistComplete(true);
+      if (checklist) setSafetyChecklistData(checklist);
     }
 
     setLoading(false);
@@ -1149,9 +1149,9 @@ export default function JobDetail() {
                     <ClipboardList className="h-3 w-3 mr-1" /> Site Report
                   </Button>
                 )}
-                {safetyChecklistComplete && (
+                {safetyChecklistData && (
                   <Button size="sm" variant="outline" className="text-xs" onClick={handleExportSafetyChecklistPdf}>
-                    <ShieldCheck className="h-3 w-3 mr-1" /> Safety Checklist PDF
+                    <Printer className="h-3 w-3 mr-1" /> Safety PDF
                   </Button>
                 )}
                 <Button size="sm" variant="outline" className="text-xs" onClick={handleShareOrPrint}>
@@ -1191,8 +1191,8 @@ export default function JobDetail() {
                   {ea.label}
                 </Button>
               ))}
-              {/* Show safety checklist status when in progress */}
-              {job.status === "in_progress" && safetyChecklistComplete && (
+              {/* Show safety checklist status when completed */}
+              {job.status === "in_progress" && safetyChecklistData && (
                 <div className="flex items-center gap-2 text-xs text-success">
                   <ShieldCheck className="h-3 w-3" />
                   <span>Safety checklist completed</span>
@@ -1212,6 +1212,118 @@ export default function JobDetail() {
 
       {/* Scheduling Panel — hidden from owner */}
       {showScheduling && role !== "owner" && <SchedulingPanel job={job} role={role} onUpdate={fetchAll} />}
+
+      {/* Safety Checklist — native display (admin + engineer) */}
+      {safetyChecklistData && (role === "admin" || role === "engineer") && (
+        <Card className="card-elevated border-emerald-500/20">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                Safety Checklist
+              </CardTitle>
+              <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleExportSafetyChecklistPdf}>
+                <Printer className="h-3 w-3 mr-1" /> Export PDF
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Progress */}
+            {(() => {
+              const items = safetyChecklistData.items || [];
+              const done = items.filter((i: any) => i.checked).length;
+              const total = items.length || 11;
+              const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+              return (
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className={done === total ? "h-full bg-emerald-500 rounded-full transition-all" : "h-full bg-amber-500 rounded-full transition-all"}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="text-[11px] font-mono tabular-nums text-muted-foreground">{done}/{total}</span>
+                  {done === total && (
+                    <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-600 bg-emerald-500/5">
+                      Complete
+                    </Badge>
+                  )}
+                </div>
+              );
+            })()}
+            {/* Checklist items — sectioned */}
+            {(() => {
+              const items = safetyChecklistData.items || [];
+              const checkedMap: Record<string, boolean> = {};
+              items.forEach((i: any) => { checkedMap[i.id] = i.checked; });
+
+              const sections: Record<string, { title: string; ids: string[] }> = {
+                personal: { title: "Personal Safety", ids: ["ppe", "ladder", "communication"] },
+                site: { title: "Site Conditions", ids: ["electrical", "weather", "roof", "site"] },
+                emergency: { title: "Emergency Prep", ids: ["fire", "firstaid"] },
+                docs: { title: "Documentation", ids: ["signoff", "building_photo"] },
+              };
+
+              const labels: Record<string, string> = {
+                ppe: "PPE worn", ladder: "Ladder safety", communication: "Communication plan",
+                electrical: "Electrical isolation", weather: "Weather conditions safe",
+                roof: "Roof condition assessed", site: "Site hazards identified",
+                fire: "Fire safety", firstaid: "First aid kit available",
+                signoff: "Toolbox talk completed", building_photo: "Building exterior photo",
+              };
+
+              return Object.entries(sections).map(([key, section]) => (
+                <div key={key}>
+                  <div className="text-[10px] font-mono uppercase tracking-[0.12em] text-muted-foreground mb-1.5">
+                    {section.title}
+                  </div>
+                  <div className="space-y-1">
+                    {section.ids.map((itemId) => {
+                      const isChecked = checkedMap[itemId];
+                      return (
+                        <div key={itemId} className={cn(
+                          "flex items-center gap-2 text-xs py-1 px-2 -mx-1 rounded",
+                          isChecked ? "text-emerald-600" : "text-muted-foreground line-through decoration-muted-foreground/30"
+                        )}>
+                          <span className={cn(
+                            "flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px]",
+                            isChecked ? "bg-emerald-500/10 text-emerald-500" : "bg-muted text-muted-foreground/50"
+                          )}>
+                            {isChecked ? "✓" : "—"}
+                          </span>
+                          {labels[itemId] || itemId}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ));
+            })()}
+            {/* Notes */}
+            {safetyChecklistData.notes && (
+              <div>
+                <div className="text-[10px] font-mono uppercase tracking-[0.12em] text-muted-foreground mb-1">Notes</div>
+                <p className="text-xs text-muted-foreground bg-secondary/30 rounded-lg p-3">{safetyChecklistData.notes}</p>
+              </div>
+            )}
+            {/* Building photo */}
+            {safetyChecklistData.building_photo_url && (
+              <div>
+                <div className="text-[10px] font-mono uppercase tracking-[0.12em] text-muted-foreground mb-1.5">Building Exterior</div>
+                <img
+                  src={safetyChecklistData.building_photo_url}
+                  alt="Building exterior"
+                  className="w-full h-44 object-cover rounded-xl border border-border/80"
+                />
+              </div>
+            )}
+            {/* Timestamp */}
+            <p className="text-[10px] text-muted-foreground/60">
+              Completed {new Date(safetyChecklistData.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Guided Photo Upload for Owners — only if photos haven't been submitted yet */}
       {role === "owner" && ["draft"].includes(job.status) && (
@@ -1724,8 +1836,8 @@ export default function JobDetail() {
           jobId={id!}
           engineerId={user.id}
           onComplete={() => {
-            setSafetyChecklistComplete(true);
             setSafetyChecklistOpen(false);
+            fetchAll();
             // Now actually update the job status to in_progress
             updateStatus("in_progress");
           }}
