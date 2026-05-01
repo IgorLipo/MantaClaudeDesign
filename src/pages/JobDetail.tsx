@@ -867,8 +867,8 @@ export default function JobDetail() {
       {/* Back button — not for owner (single-job view) */}
       {role !== "owner" && (
         <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/jobs")} className="-ml-2 text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" /> Back to jobs
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="-ml-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" /> Back to dashboard
           </Button>
           {job?.case_no && (
             <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">

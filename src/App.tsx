@@ -58,7 +58,7 @@ function AppRoutes() {
     <AppShell>
       <Routes>
         <Route path="/" element={<ProtectedRoute><OwnerRedirect /></ProtectedRoute>} />
-        <Route path="/jobs" element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
+        <Route path="/jobs" element={<Navigate to="/" replace />} />
         <Route path="/jobs/:id" element={<ProtectedRoute><JobDetail /></ProtectedRoute>} />
         <Route path="/jobs/:id/report" element={<ProtectedRoute><SiteReport /></ProtectedRoute>} />
         <Route path="/my-job" element={<ProtectedRoute roles={["owner"]}><OwnerJobHome /></ProtectedRoute>} />

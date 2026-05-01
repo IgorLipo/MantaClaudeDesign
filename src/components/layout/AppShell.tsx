@@ -29,7 +29,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: "/jobs", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "scaffolder", "engineer"] },
+  { path: "/", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "scaffolder", "engineer"] },
   { path: "/my-job", label: "My Job", icon: Home, roles: ["owner"] },
   { path: "/my-quotes", label: "My Quotes", icon: ScrollText, roles: ["scaffolder"] },
   { path: "/site-reports", label: "Site Reports", icon: ScrollText, roles: ["engineer"] },
