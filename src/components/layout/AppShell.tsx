@@ -38,6 +38,7 @@ const navItems: NavItem[] = [
   { path: "/regions", label: "Regions", icon: MapPin, roles: ["admin"] },
   { path: "/notifications", label: "Notifications", icon: Bell },
   { path: "/audit", label: "Audit Log", icon: ScrollText, roles: ["admin"] },
+  { path: "/admin/settings", label: "Job Defaults", icon: Settings, roles: ["admin"] },
   { path: "/settings", label: "Settings", icon: Settings },
 ];
 

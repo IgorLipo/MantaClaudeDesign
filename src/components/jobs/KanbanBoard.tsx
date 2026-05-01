@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, User } from "lucide-react";
-import { KANBAN_COLUMNS, STATUS_LABELS, STATUS_VARIANTS } from "@/constants/status";
+import { KANBAN_COLUMNS, STATUS_LABELS, STATUS_VARIANTS, STATUS_TRANSITIONS } from "@/constants/status";
 import { useToast } from "@/hooks/use-toast";
 import { logAudit } from "@/hooks/useAuditLog";
 import { useAuth } from "@/contexts/AuthContext";
@@ -81,6 +81,13 @@ export function KanbanBoard() {
 
     const newStatus = destination.droppableId;
     const jobId = draggableId;
+    const oldStatus = source.droppableId;
+
+    const allowed = STATUS_TRANSITIONS[oldStatus] || [];
+    if (!allowed.includes(newStatus)) {
+      toast({ title: "Invalid move", description: `Cannot move from ${STATUS_LABELS[oldStatus]} to ${STATUS_LABELS[newStatus]}`, variant: "destructive" });
+      return;
+    }
 
     setJobs((prev) =>
       prev.map((j) => (j.id === jobId ? { ...j, status: newStatus } : j))

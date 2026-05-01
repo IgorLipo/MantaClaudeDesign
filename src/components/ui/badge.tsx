@@ -18,6 +18,7 @@ const badgeVariants = cva(
         active:    "border-transparent bg-status-active-soft text-status-active",
         complete:  "border-transparent bg-status-complete-soft text-status-complete",
         cancelled: "border-transparent bg-status-cancelled-soft text-status-cancelled",
+        draft:     "border-transparent bg-status-cancelled-soft/50 text-status-cancelled",
       },
     },
     defaultVariants: {

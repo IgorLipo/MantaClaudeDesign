@@ -61,9 +61,10 @@ const DEFAULTS: JobSettings = {
 interface Props {
   jobId: string;
   currentSettings: Record<string, any> | null;
+  onUpdated?: () => void;
 }
 
-export function JobSettingsPanel({ jobId, currentSettings }: Props) {
+export function JobSettingsPanel({ jobId, currentSettings, onUpdated }: Props) {
   const { toast } = useToast();
   const [settings, setSettings] = useState<JobSettings>(() => ({
     ...DEFAULTS,
@@ -72,6 +73,16 @@ export function JobSettingsPanel({ jobId, currentSettings }: Props) {
   }));
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (currentSettings && Object.keys(currentSettings).length > 0) {
+      setSettings((prev) => ({
+        ...prev,
+        ...currentSettings,
+        custom_checkpoints: (currentSettings as any)?.custom_checkpoints || prev.custom_checkpoints,
+      }));
+    }
+  }, [currentSettings]);
 
   const toggle = (key: keyof Omit<JobSettings, "custom_checkpoints">) => {
     setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -88,6 +99,7 @@ export function JobSettingsPanel({ jobId, currentSettings }: Props) {
       toast({ title: "Save failed", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Settings saved" });
+      onUpdated?.();
     }
     setSaving(false);
   };

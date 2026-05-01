@@ -491,10 +491,6 @@ export default function JobDetail() {
     setGuidedUploadOpen(false);
     fetchAll();
     toast({ title: "Photos submitted for review" });
-    if (job.status === "draft") {
-      await supabase.from("jobs").update({ status: "submitted" as any, updated_at: new Date().toISOString() }).eq("id", id);
-      setJob((prev: any) => ({ ...prev, status: "submitted" }));
-    }
     if (user?.id && id) {
       notifyOwnerPhotoSubmitted(user.id, job.title, id);
     }
@@ -644,9 +640,9 @@ export default function JobDetail() {
   const hasEngineer = assignedEngineerIds.length > 0;
   const allScaffolders = scaffolders;
   const allEngineers = engineers;
-  const showScheduling = ["scheduled", "in_progress", "quote_submitted", "negotiating"].includes(job.status) || job.scheduled_date;
+  const showScheduling = ["scheduled", "in_progress"].includes(job.status) || job.scheduled_date;
   const showSiteReport = ["in_progress", "completed"].includes(job.status);
-  const canEdit = role === "admin" || (role === "owner" && job.owner_id === user?.id);
+  const canEdit = role === "admin" || (role === "owner" && job.owner_id === user?.id && resolveSetting("owner_can_edit_address"));
 
   const chatRecipients: Record<string, string[]> = {
     admin_scaffolder: [...adminIds, ...assignedIds],
@@ -772,7 +768,7 @@ export default function JobDetail() {
           )}
 
           {/* Owner: show final price if set */}
-          {role === "owner" && (job as any).final_price && (
+          {role === "owner" && (job as any).final_price && resolveSetting("owner_can_see_docs") && (
             <div className="pt-3 border-t border-border">
               <div className="bg-success/5 border border-success/20 rounded-xl p-4 text-center">
                 <p className="text-xs text-muted-foreground mb-1">Approved Price</p>
@@ -892,7 +888,7 @@ export default function JobDetail() {
       {showScheduling && role !== "owner" && <SchedulingPanel job={job} role={role} onUpdate={fetchAll} />}
 
       {/* Guided Photo Upload for Owners — only if photos haven't been submitted yet */}
-      {role === "owner" && ["draft"].includes(job.status) && resolveSetting("owner_can_upload_photos") && (
+      {role === "owner" && ["awaiting_owner_details", "planning"].includes(job.status) && resolveSetting("owner_can_upload_photos") && (
         <Card className="card-elevated border-primary/20">
           <CardContent className="p-4">
             {guidedUploadOpen ? (
@@ -929,7 +925,7 @@ export default function JobDetail() {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent>
-                {role === "scaffolder" && (
+                {role === "scaffolder" && resolveSetting("scaffolder_can_submit_quotes") && (
                   <div className="mb-3">
                     <Button size="sm" variant="outline" className="text-xs" onClick={() => setQuoteOpen(true)}>
                       <Send className="h-3 w-3 mr-1" /> Submit Quote
