@@ -4,101 +4,56 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { ShieldCheck, AlertTriangle, HardHat, Zap, Wind, Thermometer, Radio, Eye, Droplets, ClipboardCheck, ArrowUpDown, Camera, Building2, X, Printer, FileText } from "lucide-react";
+import {
+  ShieldCheck, HardHat, Zap, Wind, Home, Radio,
+  Eye, Flame, Cross, ClipboardCheck, Camera, Building2,
+  X, ImagePlus, Check, AlertTriangle,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { logAudit } from "@/hooks/useAuditLog";
 import { notifySafetyChecklistComplete } from "@/hooks/useNotificationTriggers";
 
-/* ──────── Safety Checklist Items ──────── */
-export interface SafetyChecklistItem {
+/* ──────── Safety Checklist Data ──────── */
+
+interface SafetyItem {
   id: string;
   label: string;
   description: string;
-  icon: React.ReactNode;
-  checked: boolean;
+  icon: React.ElementType;
+  section: "personal" | "site" | "emergency" | "docs";
 }
 
-const DEFAULT_ITEMS: SafetyChecklistItem[] = [
-  {
-    id: "ppe",
-    label: "PPE worn",
-    description: "Hard hat, safety harness, gloves, steel-toe boots, high-vis vest",
-    icon: <HardHat className="h-4 w-4" />,
-    checked: false,
-  },
-  {
-    id: "ladder",
-    label: "Ladder safety",
-    description: "Ladder is secure, on stable ground, at correct angle (4:1 ratio)",
-    icon: <ArrowUpDown className="h-4 w-4" />,
-    checked: false,
-  },
-  {
-    id: "electrical",
-    label: "Electrical isolation",
-    description: "Solar array isolated, inverter powered down, no exposed live cables",
-    icon: <Zap className="h-4 w-4" />,
-    checked: false,
-  },
-  {
-    id: "weather",
-    label: "Weather conditions safe",
-    description: "No high winds (>25mph), rain, ice, or lightning risk",
-    icon: <Wind className="h-4 w-4" />,
-    checked: false,
-  },
-  {
-    id: "roof",
-    label: "Roof condition assessed",
-    description: "Roof structure safe to walk on, no loose tiles or fragile surfaces",
-    icon: <Thermometer className="h-4 w-4" />,
-    checked: false,
-  },
-  {
-    id: "communication",
-    label: "Communication plan",
-    description: "Radio/mobile phone charged, emergency contacts known, buddy system in place",
-    icon: <Radio className="h-4 w-4" />,
-    checked: false,
-  },
-  {
-    id: "site",
-    label: "Site hazards identified",
-    description: "Trip hazards, overhead cables, confined spaces, sharp edges identified and marked",
-    icon: <Eye className="h-4 w-4" />,
-    checked: false,
-  },
-  {
-    id: "fire",
-    label: "Fire safety",
-    description: "Fire extinguisher accessible, no flammable materials near electrical work, exit routes clear",
-    icon: <AlertTriangle className="h-4 w-4" />,
-    checked: false,
-  },
-  {
-    id: "firstaid",
-    label: "First aid kit available",
-    description: "First aid kit on site, designated first-aider identified",
-    icon: <Droplets className="h-4 w-4" />,
-    checked: false,
-  },
-  {
-    id: "signoff",
-    label: "Toolbox talk completed",
-    description: "All team members briefed on today's tasks, risks, and emergency procedures",
-    icon: <ClipboardCheck className="h-4 w-4" />,
-    checked: false,
-  },
-  {
-    id: "building_photo",
-    label: "Building exterior photo",
-    description: "Upload or capture a clear photo of the building from the outside",
-    icon: <Building2 className="h-4 w-4" />,
-    checked: false,
-  },
+const SAFETY_ITEMS: SafetyItem[] = [
+  // Personal Safety
+  { id: "ppe", label: "PPE worn", description: "Hard hat, harness, gloves, steel-toe boots, high-vis vest", icon: HardHat, section: "personal" },
+  { id: "ladder", label: "Ladder safety", description: "Secure, stable ground, correct 4:1 angle ratio", icon: ShieldCheck, section: "personal" },
+  { id: "communication", label: "Communication plan", description: "Radio/phone charged, emergency contacts known, buddy system active", icon: Radio, section: "personal" },
+  // Site Safety
+  { id: "electrical", label: "Electrical isolation", description: "Array isolated, inverter off, no exposed live cables", icon: Zap, section: "site" },
+  { id: "weather", label: "Weather conditions", description: "No high winds (>25mph), rain, ice, or lightning risk", icon: Wind, section: "site" },
+  { id: "roof", label: "Roof condition", description: "Structure safe to walk on, no loose tiles or fragile surfaces", icon: Home, section: "site" },
+  { id: "site", label: "Site hazards marked", description: "Trip hazards, overhead cables, confined spaces identified", icon: Eye, section: "site" },
+  // Emergency
+  { id: "fire", label: "Fire safety", description: "Extinguisher accessible, no flammables near electrical, exits clear", icon: Flame, section: "emergency" },
+  { id: "firstaid", label: "First aid ready", description: "Kit on site, designated first-aider identified", icon: Cross, section: "emergency" },
+  // Documentation
+  { id: "signoff", label: "Toolbox talk done", description: "All team briefed on tasks, risks, and emergency procedures", icon: ClipboardCheck, section: "docs" },
+  { id: "building_photo", label: "Building exterior", description: "Clear photo of the building from outside", icon: Building2, section: "docs" },
 ];
+
+const SECTION_LABELS: Record<string, string> = {
+  personal: "Personal Safety",
+  site: "Site Conditions",
+  emergency: "Emergency Prep",
+  docs: "Documentation",
+};
+
+interface ChecklistStateItem {
+  id: string;
+  checked: boolean;
+}
 
 interface Props {
   open: boolean;
@@ -110,15 +65,18 @@ interface Props {
 
 export default function SafetyChecklistDialog({ open, onOpenChange, jobId, engineerId, onComplete }: Props) {
   const { toast } = useToast();
-  const [items, setItems] = useState<SafetyChecklistItem[]>(DEFAULT_ITEMS);
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [buildingPhoto, setBuildingPhoto] = useState<File | null>(null);
   const [buildingPhotoUrl, setBuildingPhotoUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load existing checklist if one exists
+  const checkedCount = Object.values(checked).filter(Boolean).length;
+  const totalCount = SAFETY_ITEMS.length;
+  const allChecked = checkedCount === totalCount;
+
   useEffect(() => {
     if (!open || !jobId) return;
     const load = async () => {
@@ -131,20 +89,22 @@ export default function SafetyChecklistDialog({ open, onOpenChange, jobId, engin
         .maybeSingle();
 
       if (data) {
-        const savedItems: SafetyChecklistItem[] = data.items || [];
-        // Merge saved items with defaults to handle any new items added later
-        const merged = DEFAULT_ITEMS.map((defaultItem) => {
-          const saved = savedItems.find((s: any) => s.id === defaultItem.id);
-          return saved ? { ...defaultItem, checked: saved.checked } : defaultItem;
+        const saved: ChecklistStateItem[] = data.items || [];
+        const merged: Record<string, boolean> = {};
+        SAFETY_ITEMS.forEach((item) => {
+          const savedItem = saved.find((s) => s.id === item.id);
+          merged[item.id] = savedItem ? savedItem.checked : false;
         });
-        setItems(merged);
+        setChecked(merged);
         setNotes(data.notes || "");
         if (data.building_photo_url) {
           setBuildingPhotoUrl(data.building_photo_url);
-          setItems((prev) => prev.map((i) => (i.id === "building_photo" ? { ...i, checked: true } : i)));
+          setChecked((prev) => ({ ...prev, building_photo: true }));
         }
       } else {
-        setItems(DEFAULT_ITEMS.map((i) => ({ ...i })));
+        const fresh: Record<string, boolean> = {};
+        SAFETY_ITEMS.forEach((item) => { fresh[item.id] = false; });
+        setChecked(fresh);
         setNotes("");
         setBuildingPhoto(null);
         setBuildingPhotoUrl(null);
@@ -154,56 +114,48 @@ export default function SafetyChecklistDialog({ open, onOpenChange, jobId, engin
     load();
   }, [open, jobId, engineerId]);
 
-  const toggleItem = (id: string) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, checked: !item.checked } : item
-      )
-    );
+  const toggle = (id: string) => {
+    setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
   };
-
-  const allChecked = items.every((item) => item.checked);
-  const checkedCount = items.filter((i) => i.checked).length;
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setBuildingPhoto(file);
     setBuildingPhotoUrl(URL.createObjectURL(file));
-    setItems((prev) => prev.map((i) => (i.id === "building_photo" ? { ...i, checked: true } : i)));
+    setChecked((prev) => ({ ...prev, building_photo: true }));
   };
 
   const clearPhoto = () => {
     setBuildingPhoto(null);
     setBuildingPhotoUrl(null);
-    setItems((prev) => prev.map((i) => (i.id === "building_photo" ? { ...i, checked: false } : i)));
+    setChecked((prev) => ({ ...prev, building_photo: false }));
   };
 
   const handleSubmit = async () => {
     if (!allChecked) {
-      toast({ title: "All items must be checked", variant: "destructive" });
+      toast({ title: "Complete all checklist items before submitting", variant: "destructive" });
       return;
     }
-
     setSubmitting(true);
 
-    // Upload building photo if new one selected
-    let uploadedPhotoUrl = buildingPhotoUrl;
+    let photoUrl = buildingPhotoUrl;
     if (buildingPhoto && jobId) {
       const ext = buildingPhoto.name.split(".").pop();
       const path = `${jobId}/safety/${Date.now()}.${ext}`;
       const { error: uploadErr } = await supabase.storage.from("job-photos").upload(path, buildingPhoto);
       if (!uploadErr) {
         const { data: urlData } = supabase.storage.from("job-photos").getPublicUrl(path);
-        uploadedPhotoUrl = urlData.publicUrl;
+        photoUrl = urlData.publicUrl;
       }
     }
 
+    const items: ChecklistStateItem[] = Object.entries(checked).map(([id, val]) => ({ id, checked: val }));
     const { error } = await (supabase as any).rpc("upsert_safety_checklist", {
       _job_id: jobId,
-      _items: items.map(({ id, checked }) => ({ id, checked })),
+      _items: items,
       _notes: notes,
-      _building_photo_url: uploadedPhotoUrl || null,
+      _building_photo_url: photoUrl || null,
     });
 
     if (error) {
@@ -214,161 +166,209 @@ export default function SafetyChecklistDialog({ open, onOpenChange, jobId, engin
 
     logAudit(engineerId, "safety_checklist_completed", "job", jobId);
     notifySafetyChecklistComplete(jobId, notes, engineerId);
-
-    toast({ title: "✅ Safety checklist completed" });
+    toast({ title: "Safety checklist completed" });
     setSubmitting(false);
     onComplete();
   };
 
+  // Group items by section
+  const sections = SAFETY_ITEMS.reduce((acc, item) => {
+    if (!acc[item.section]) acc[item.section] = [];
+    acc[item.section].push(item);
+    return acc;
+  }, {} as Record<string, SafetyItem[]>);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-            <DialogTitle>Safety Checklist</DialogTitle>
-          </div>
-          <DialogDescription>
-            Complete all safety checks before starting work on site.
-          </DialogDescription>
-        </DialogHeader>
-
-        {loading ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>
-        ) : (
-          <div className="space-y-4">
-            {/* Progress indicator */}
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all duration-300",
-                    allChecked ? "bg-success" : "bg-primary"
-                  )}
-                  style={{ width: `${(checkedCount / items.length) * 100}%` }}
-                />
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-card border-b border-border/60 px-6 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 ring-1 ring-amber-500/20">
+                <ShieldCheck className="h-5 w-5 text-amber-500" />
               </div>
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {checkedCount}/{items.length}
+              <div>
+                <DialogTitle className="text-lg font-semibold leading-tight">Site Safety Checklist</DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">
+                  All items must be verified before work begins
+                </DialogDescription>
+              </div>
+            </div>
+            {/* Progress ring */}
+            <div className="flex flex-col items-center shrink-0">
+              <svg width="48" height="48" viewBox="0 0 48 48" className={cn(
+                "-rotate-90 transition-all duration-700",
+                allChecked ? "text-emerald-500" : "text-amber-500"
+              )}>
+                <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" strokeWidth="4" className="text-muted/20" />
+                <circle
+                  cx="24" cy="24" r="20" fill="none" stroke="currentColor" strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeDasharray={`${(checkedCount / totalCount) * 125.66} 125.66`}
+                  className="transition-[stroke-dasharray] duration-500"
+                />
+              </svg>
+              <span className="text-[10px] font-mono tabular-nums text-muted-foreground -mt-5">
+                {checkedCount}/{totalCount}
               </span>
             </div>
+          </div>
+        </div>
 
-            {/* Checklist items */}
-            <div className="space-y-2">
-              {items.map((item) => (
-                <label
-                  key={item.id}
-                  className={cn(
-                    "flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all",
-                    item.checked
-                      ? "border-success/30 bg-success/5"
-                      : "border-border bg-card hover:bg-secondary/50"
-                  )}
-                >
-                  <Checkbox
-                    checked={item.checked}
-                    onCheckedChange={() => toggleItem(item.id)}
-                    className={cn(
-                      "mt-0.5",
-                      item.checked && "border-success bg-success text-success-foreground"
-                    )}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className={cn(
-                        "shrink-0",
-                        item.checked ? "text-success" : "text-muted-foreground"
-                      )}>
-                        {item.icon}
-                      </span>
-                      <span className={cn(
-                        "text-sm font-medium",
-                        item.checked ? "text-success line-through" : "text-foreground"
-                      )}>
-                        {item.label}
-                      </span>
-                    </div>
-                    <p className={cn(
-                      "text-xs mt-0.5",
-                      item.checked ? "text-success/70" : "text-muted-foreground"
-                    )}>
-                      {item.description}
-                    </p>
-                  </div>
-                </label>
-              ))}
-            </div>
-
-            {/* Building exterior photo - mandatory */}
-            <div className="space-y-2 p-3 rounded-xl border border-border bg-card">
-              <div className="flex items-center gap-1.5">
-                <Building2 className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-foreground">Building Exterior Photo *</span>
+        {/* Body */}
+        {loading ? (
+          <div className="py-16 text-center text-sm text-muted-foreground">Loading checklist…</div>
+        ) : (
+          <div className="px-6 py-5 space-y-8">
+            {Object.entries(sections).map(([sectionKey, sectionItems]) => (
+              <div key={sectionKey}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                    {SECTION_LABELS[sectionKey]}
+                  </span>
+                  <span className="flex-1 h-px bg-border/60" />
+                </div>
+                <div className="space-y-1.5">
+                  {sectionItems.map((item) => {
+                    const isChecked = checked[item.id] || false;
+                    return (
+                      <label
+                        key={item.id}
+                        className={cn(
+                          "group flex items-center gap-3 px-3 py-2.5 -mx-1 rounded-lg cursor-pointer",
+                          "transition-all duration-150",
+                          isChecked
+                            ? "bg-emerald-500/5 ring-1 ring-emerald-500/15"
+                            : "hover:bg-muted/60"
+                        )}
+                      >
+                        <button
+                          onClick={() => toggle(item.id)}
+                          className={cn(
+                            "flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-all duration-150",
+                            isChecked
+                              ? "border-emerald-500 bg-emerald-500 text-white"
+                              : "border-muted-foreground/30 hover:border-muted-foreground/50"
+                          )}
+                        >
+                          {isChecked && <Check className="h-3 w-3" strokeWidth={3} />}
+                        </button>
+                        <item.icon className={cn(
+                          "h-4 w-4 shrink-0 transition-colors duration-150",
+                          isChecked ? "text-emerald-500" : "text-muted-foreground"
+                        )} />
+                        <div className="min-w-0 flex-1">
+                          <span className={cn(
+                            "text-sm font-medium transition-all duration-150",
+                            isChecked ? "text-emerald-600 line-through decoration-emerald-300/60" : "text-foreground"
+                          )}>
+                            {item.label}
+                          </span>
+                          <p className="text-[11px] text-muted-foreground/80 mt-0.5 leading-relaxed">
+                            {item.description}
+                          </p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Upload a clear photo of the building from the outside. This is mandatory before starting work.
-              </p>
+            ))}
+
+            {/* Building Photo Upload */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                  Site Evidence
+                </span>
+                <span className="flex-1 h-px bg-border/60" />
+              </div>
+
               {buildingPhotoUrl ? (
-                <div className="relative rounded-lg overflow-hidden border border-border">
-                  <img src={buildingPhotoUrl} alt="Building exterior" className="w-full h-40 object-cover" />
+                <div className="relative rounded-xl overflow-hidden border border-border/80 shadow-sm group">
+                  <img
+                    src={buildingPhotoUrl}
+                    alt="Building exterior"
+                    className="w-full h-48 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                   <button
                     onClick={clearPhoto}
-                    className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
+                    className="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors shadow-lg"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <X className="h-4 w-4" />
                   </button>
+                  <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm rounded-full px-3 py-1 text-white text-xs">
+                    <Check className="h-3 w-3 text-emerald-400" />
+                    Photo captured
+                  </div>
                 </div>
               ) : (
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Camera className="h-3 w-3 mr-1" /> Take Photo
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <FileText className="h-3 w-3 mr-1" /> Upload Photo
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={handlePhotoChange}
-                  />
-                </div>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex flex-col items-center justify-center gap-2 py-8 rounded-xl border-2 border-dashed border-border/80 hover:border-primary/40 hover:bg-primary/5 transition-all duration-200 text-muted-foreground hover:text-primary group"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted group-hover:bg-primary/10 transition-colors">
+                    <ImagePlus className="h-6 w-6" />
+                  </div>
+                  <div className="text-sm font-medium">Add building exterior photo</div>
+                  <div className="text-[11px] text-muted-foreground/70">Required before starting work</div>
+                </button>
               )}
-            </div>
-
-            {/* Notes */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Additional Notes (optional)</Label>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Any additional safety observations or concerns..."
-                rows={2}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handlePhotoChange}
               />
             </div>
 
-            {/* Submit */}
-            <Button
-              className="w-full"
-              disabled={!allChecked || submitting}
-              onClick={handleSubmit}
-            >
-              {submitting ? "Saving..." : allChecked ? "✓ Confirm & Start Work" : `Check all ${items.length} items to continue`}
-            </Button>
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground">Additional notes</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Any safety observations, concerns, or crew notes…"
+                rows={3}
+                className="resize-none text-sm"
+              />
+            </div>
           </div>
         )}
+
+        {/* Footer */}
+        <div className="sticky bottom-0 bg-card border-t border-border/60 px-6 py-4 space-y-2">
+          {allChecked && !loading && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/5 ring-1 ring-emerald-500/15 text-[11px] text-emerald-600 animate-em-enter">
+              <Check className="h-3.5 w-3.5" />
+              All {totalCount} safety checks verified — ready to proceed
+            </div>
+          )}
+          <Button
+            size="lg"
+            className="w-full font-semibold tracking-tight"
+            disabled={!allChecked || submitting || loading}
+            onClick={handleSubmit}
+          >
+            {submitting ? (
+              "Saving…"
+            ) : allChecked ? (
+              <span className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4" />
+                Confirm &amp; Start Work
+              </span>
+            ) : (
+              `${checkedCount} of ${totalCount} checks completed`
+            )}
+          </Button>
+          <p className="text-[10px] text-muted-foreground text-center">
+            By submitting, you confirm all safety checks have been physically verified on site.
+          </p>
+        </div>
       </DialogContent>
     </Dialog>
   );
