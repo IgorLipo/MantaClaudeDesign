@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Sun, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import mantaLogo from "@/assets/manta-logo.png";
-import loginVideo from "@/assets/login-background.mp4";
+
+const loginVideoUrl = "https://nmdbngcwmrgqtpzukwkf.supabase.co/storage/v1/object/public/assets/login-background.mp4";
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -57,7 +58,7 @@ export default function Login() {
         playsInline
         className="fixed inset-0 w-full h-full object-cover brightness-[1.4]"
       >
-        <source src={loginVideo} type="video/mp4" />
+        <source src={loginVideoUrl} type="video/mp4" />
       </video>
 
       {/* Dark vignette overlay for readability */}
