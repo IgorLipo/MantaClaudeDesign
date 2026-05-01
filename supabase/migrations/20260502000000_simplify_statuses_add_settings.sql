@@ -23,6 +23,20 @@ ALTER TABLE admin_settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "admin_full_access" ON admin_settings FOR ALL TO authenticated
 USING (public.has_role(auth.uid(), 'admin'::public.app_role));
 
+-- Auto-update updated_at on admin_settings
+CREATE OR REPLACE FUNCTION public.update_admin_settings_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS admin_settings_updated_at ON admin_settings;
+CREATE TRIGGER admin_settings_updated_at
+  BEFORE UPDATE ON admin_settings
+  FOR EACH ROW EXECUTE FUNCTION public.update_admin_settings_updated_at();
+
 -- 5. Update redeem_job_invite: awaiting_owner_details → planning (not draft)
 CREATE OR REPLACE FUNCTION public.redeem_job_invite(_token text)
 RETURNS uuid
@@ -116,7 +130,10 @@ BEGIN
   END IF;
 
   -- Load merged settings: global defaults + per-job overrides
-  v_settings := COALESCE(v_job.job_settings, '{}'::jsonb);
+  v_settings := COALESCE(
+    (SELECT default_job_settings FROM public.admin_settings WHERE id = 1),
+    '{}'::jsonb
+  ) || COALESCE(v_job.job_settings, '{}'::jsonb);
 
   -- Check engineer_can_change_status
   IF (v_settings->>'engineer_can_change_status')::boolean IS FALSE THEN
