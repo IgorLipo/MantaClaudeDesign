@@ -46,7 +46,7 @@ const NotFound = () => {
           className="inline-flex items-center gap-2 h-11 px-5 rounded-md bg-primary text-primary-foreground text-sm font-medium shadow-sm hover:shadow-glow hover:bg-primary-emphasis transition-[background-color,box-shadow] duration-quick ease-quick"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to dashboard
+          Back to jobs
         </Link>
       </div>
     </div>

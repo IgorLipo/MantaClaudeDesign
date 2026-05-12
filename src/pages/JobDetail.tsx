@@ -965,7 +965,7 @@ export default function JobDetail() {
       {role !== "owner" && (
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="-ml-2 text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" /> Back to dashboard
+            <ArrowLeft className="h-4 w-4" /> Back to jobs
           </Button>
           {job?.case_no && (
             <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
