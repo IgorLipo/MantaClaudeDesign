@@ -29,7 +29,9 @@ function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?
   const { user, role, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (roles && role && !roles.includes(role)) return <Navigate to="/" replace />;
+  // If roles are required but role hasn't loaded yet, show loading (don't allow null role through)
+  if (roles && !role) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
+  if (roles && !roles.includes(role!)) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
