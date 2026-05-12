@@ -304,29 +304,31 @@ export default function Jobs() {
                 key={job.id}
                 onClick={() => navigate(`/jobs/${job.id}`)}
                 className={cn(
-                  "group w-full text-left px-3 sm:px-5 py-2.5 sm:py-3.5 flex items-center gap-2 sm:gap-4",
+                  "group w-full text-left px-2 sm:px-5 py-2 sm:py-3.5 flex items-center gap-2 sm:gap-4",
                   "hover:bg-subtle/60 transition-colors duration-quick",
                   i !== 0 && "border-t border-border/60"
                 )}
               >
-                {job.case_no && (
-                  <span className="font-mono text-[10px] sm:text-[11px] text-muted-foreground/80 w-14 sm:w-20 truncate shrink-0">
-                    {job.case_no}
-                  </span>
-                )}
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs sm:text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors duration-quick">
-                    {job.title}
+                  <div className="flex items-center gap-2">
+                    {job.case_no && (
+                      <span className="font-mono text-[9px] sm:text-[11px] text-muted-foreground/60 shrink-0">
+                        {job.case_no}
+                      </span>
+                    )}
+                    <div className="text-xs sm:text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors duration-quick">
+                      {job.title}
+                    </div>
                   </div>
                   <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground mt-0.5">
                     <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
                     <span className="truncate">{job.address || "Address pending"}</span>
                   </div>
                 </div>
-                <Badge variant={STATUS_VARIANTS[job.status] as any} className="shrink-0 text-[9px] sm:text-xs px-1.5 py-0 h-5 sm:h-auto">
+                <Badge variant={STATUS_VARIANTS[job.status] as any} className="shrink-0 text-[9px] px-1 py-0 h-5 leading-none font-medium">
                   {STATUS_LABELS[job.status] || job.status}
                 </Badge>
-                <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground transition-[color,transform] duration-quick -translate-x-1 group-hover:translate-x-0 shrink-0" />
+                <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground transition-[color,transform] duration-quick -translate-x-0.5 group-hover:translate-x-0 shrink-0" />
               </button>
             ))}
           </div>

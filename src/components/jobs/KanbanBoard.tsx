@@ -157,13 +157,13 @@ export function KanbanBoard({ onStatusChange }: Props) {
       {/* Scroll controls */}
       <button
         onClick={() => scroll("left")}
-        className="absolute -left-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-card ring-1 ring-border shadow-md hidden sm:flex items-center justify-center hover:bg-subtle transition-colors"
+        className="absolute -left-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-card ring-1 ring-border shadow-md flex items-center justify-center hover:bg-subtle transition-colors"
       >
         <ChevronLeft className="h-4 w-4" />
       </button>
       <button
         onClick={() => scroll("right")}
-        className="absolute -right-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-card ring-1 ring-border shadow-md hidden sm:flex items-center justify-center hover:bg-subtle transition-colors"
+        className="absolute -right-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-card ring-1 ring-border shadow-md flex items-center justify-center hover:bg-subtle transition-colors"
       >
         <ChevronRight className="h-4 w-4" />
       </button>
@@ -178,7 +178,7 @@ export function KanbanBoard({ onStatusChange }: Props) {
             return (
               <div
                 key={col}
-                className="min-w-[82vw] sm:min-w-[250px] max-w-[320px] flex-1 snap-start"
+                className="min-w-[78vw] sm:min-w-[240px] max-w-[320px] flex-1 snap-start"
               >
                 <div className="flex items-center gap-2 mb-2 sticky left-0">
                   <Badge variant={STATUS_VARIANTS[col] as any} className="text-[10px] sm:text-[11px]">
@@ -278,11 +278,29 @@ export function KanbanBoard({ onStatusChange }: Props) {
         </div>
       </DragDropContext>
 
-      {/* Mobile scroll hint */}
-      <div className="flex sm:hidden items-center justify-center gap-1 mt-2 text-[10px] text-muted-foreground/60">
-        <ChevronLeft className="h-3 w-3" />
-        <span>Swipe to see all statuses</span>
-        <ChevronRight className="h-3 w-3" />
+      {/* Mobile scroll dots indicator */}
+      <div className="flex sm:hidden items-center justify-center gap-1.5 mt-3">
+        {KANBAN_COLUMNS.map((col, i) => {
+          const colJobs = jobs.filter((j) => j.status === col);
+          return (
+            <button
+              key={col}
+              onClick={() => {
+                const el = scrollRef.current;
+                if (!el) return;
+                const colEl = el.children[i] as HTMLElement;
+                if (colEl) colEl.scrollIntoView({ behavior: "smooth", inline: "start" });
+              }}
+              className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors hover:bg-muted"
+            >
+              <span className={cn(
+                "h-1.5 w-1.5 rounded-full",
+                colJobs.length > 0 ? "bg-primary" : "bg-muted-foreground/25"
+              )} />
+              <span className="text-muted-foreground">{colJobs.length}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
