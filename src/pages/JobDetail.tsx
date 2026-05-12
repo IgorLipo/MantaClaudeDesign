@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,7 +28,6 @@ import { QuoteTimeline } from "@/components/jobs/QuoteTimeline";
 import { AdminPhotoGallery } from "@/components/jobs/AdminPhotoGallery";
 import SafetyChecklistDialog from "@/components/jobs/SafetyChecklistDialog";
 import { buildInviteUrl, buildInviteMessage, generateInviteToken } from "@/lib/inviteUtils";
-import { Textarea } from "@/components/ui/textarea";
 import {
   notifyStatusChange, notifyQuoteSubmitted, notifyQuoteDecision,
   notifyPhotoUploaded, notifyScaffolderAssigned, notifyOwnerPhotoSubmitted,
@@ -148,7 +147,7 @@ export default function JobDetail() {
   const [photosOpen, setPhotosOpen] = useState(true);
   const [quotesOpen, setQuotesOpen] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ title: "", description: "", address: "", status: "" });
+  const [editForm, setEditForm] = useState({ title: "", description: "", address: "", status: "", case_no: "" });
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [counterOpen, setCounterOpen] = useState<string | null>(null);
   const [counterAmount, setCounterAmount] = useState("");
@@ -179,6 +178,7 @@ export default function JobDetail() {
   const [shareOpen, setShareOpen] = useState(false);
   const [inviteData, setInviteData] = useState<{ url: string; message: string } | null>(null);
   const [copyLabel, setCopyLabel] = useState<"url" | "msg" | null>(null);
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const fetchAll = useCallback(async () => {
     if (!id) return;
@@ -520,7 +520,8 @@ export default function JobDetail() {
     setEditSubmitting(true);
     const { error } = await supabase.from("jobs").update({
       title: editForm.title, description: editForm.description,
-      address: editForm.address, updated_at: new Date().toISOString(),
+      address: editForm.address, case_no: editForm.case_no || null,
+      updated_at: new Date().toISOString(),
     }).eq("id", id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -529,6 +530,7 @@ export default function JobDetail() {
     }
     logAudit(user.id, "job_edited", "job", id, {
       title: editForm.title, description: editForm.description, address: editForm.address,
+      case_no: editForm.case_no || null,
     });
     notifyJobEdited(id, editForm.title, user.id);
 
@@ -694,124 +696,234 @@ export default function JobDetail() {
       const { default: jsPDF } = await import("jspdf");
       const doc = new jsPDF();
       const pw = doc.internal.pageSize.getWidth();
-      const m = 20;
+      const ph = doc.internal.pageSize.getHeight();
+      const m = 18;
       const cw = pw - m * 2;
       let y: number;
 
+      // ── Colour palette ──
+      const NAVY   = [15, 23, 42]  as [number, number, number];
       const ORANGE = [249, 115, 22] as [number, number, number];
-      const DARK = [30, 30, 30] as [number, number, number];
-      const GRAY = [130, 130, 130] as [number, number, number];
-      const LIGHT = [245, 245, 245] as [number, number, number];
-      const GREEN = [16, 185, 129] as [number, number, number];
+      const GREEN  = [5, 150, 105]  as [number, number, number];
+      const RED    = [220, 38, 38]  as [number, number, number];
+      const GRAY   = [100, 116, 139] as [number, number, number];
+      const LIGHT  = [241, 245, 249] as [number, number, number];
+      const BORDER = [203, 213, 225] as [number, number, number];
+      const WHITE  = [255, 255, 255] as [number, number, number];
+      const DARKGREEN = [4, 120, 87] as [number, number, number];
 
-      // ── Header bar ──
+      // ── Top accent bar ──
       doc.setFillColor(...ORANGE);
-      doc.rect(0, 0, pw, 54, "F");
-      doc.setTextColor(255);
+      doc.rect(0, 0, pw, 4, "F");
+
+      // ── Header ──
+      y = 14;
+      doc.setTextColor(...NAVY);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(22);
-      doc.text("Site Safety Checklist", m, 22);
+      doc.setFontSize(20);
+      doc.text("MANTA RAY ENERGY", m, y);
+
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
+      doc.setFontSize(8);
+      doc.setTextColor(...GRAY);
+      doc.text("Solar Installation · Engineering · Compliance", m, y + 5);
+
+      // Header rule
+      doc.setDrawColor(...ORANGE);
+      doc.setLineWidth(0.8);
+      doc.line(m, y + 9, pw - m, y + 9);
+
+      // ── Certificate title block ──
+      y += 16;
+      doc.setFillColor(...NAVY);
+      doc.roundedRect(m, y, cw, 16, 2, 2, "F");
+      doc.setTextColor(...WHITE);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text("SITE SAFETY INSPECTION CERTIFICATE", pw / 2, y + 11, { align: "center" });
+
+      y += 22;
+
+      // ── Metadata grid ──
       const engName = profile ? `${profile.first_name} ${profile.last_name}`.trim() : "—";
-      doc.text(`Engineer: ${engName}`, m, 33);
-      doc.text(`Job: ${job.title || "—"}`, m, 39);
-      doc.text(`Case No: ${job.case_no || "—"}`, m, 45);
-      doc.text(`Date: ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}`, m, 51);
+      const refNo = `MRE-SC-${id.slice(0, 8).toUpperCase()}-${new Date().getFullYear()}`;
+      const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
-      y = 64;
+      const metaLeft = [
+        { label: "Certificate No.", value: refNo },
+        { label: "Date of Inspection", value: today },
+        { label: "Inspecting Engineer", value: engName },
+      ];
+      const metaRight = [
+        { label: "Job / Project", value: job.title || "—" },
+        { label: "Case Reference", value: job.case_no || "N/A" },
+        { label: "Site Address", value: job.address || "—" },
+      ];
 
-      // ── Status badge ──
+      const drawMetaBlock = (items: { label: string; value: string }[], x: number, startY: number, w: number) => {
+        let my = startY;
+        items.forEach((item, i) => {
+          if (i > 0) {
+            doc.setDrawColor(...BORDER);
+            doc.setLineWidth(0.3);
+            doc.line(x, my, x + w, my);
+          }
+          doc.setTextColor(...GRAY);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(6.5);
+          doc.text(item.label.toUpperCase(), x, my + 5);
+          doc.setTextColor(...NAVY);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8.5);
+          doc.text(item.value, x, my + 12);
+          my += 16;
+        });
+        return my;
+      };
+
+      const leftW = cw * 0.52;
+      const rightX = m + leftW + 8;
+      const rightW = cw - leftW - 8;
+      const metaEndY = drawMetaBlock(metaLeft, m, y, leftW);
+      drawMetaBlock(metaRight, rightX, y, rightW);
+
+      y = metaEndY + 4;
+
+      // ── Thick separator ──
+      doc.setDrawColor(...ORANGE);
+      doc.setLineWidth(1.2);
+      doc.line(m, y, pw - m, y);
+      y += 8;
+
+      // ── Status stamp ──
       const savedItems = checklist.items || [];
       const checkedCount = savedItems.filter((i: any) => i.checked).length;
       const totalItems = savedItems.length || 11;
       const allDone = checkedCount === totalItems && totalItems > 0;
-      doc.setFillColor(...(allDone ? GREEN : ORANGE));
-      doc.roundedRect(m, y, cw, 12, 2, 2, "F");
-      doc.setTextColor(255);
+
+      // Large stamp-style status
+      const stampX = pw - m - 62;
+      const stampW = 62;
+      doc.setDrawColor(...(allDone ? DARKGREEN : RED));
+      doc.setLineWidth(2.5);
+      doc.roundedRect(stampX, y - 2, stampW, 16, 3, 3, "S");
+      doc.roundedRect(stampX + 1.5, y - 0.5, stampW - 3, 13, 2.5, 2.5, "S");
+      doc.setTextColor(...(allDone ? DARKGREEN : RED));
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.text(
-        allDone ? `ALL CHECKS PASSED  —  ${checkedCount}/${totalItems} items verified` : `${checkedCount}/${totalItems} items checked`,
-        pw / 2, y + 8, { align: "center" }
-      );
+      doc.setFontSize(11);
+      doc.text(allDone ? "PASSED" : "INCOMPLETE", stampX + stampW / 2, y + 9.2, { align: "center" });
+
+      // Summary line
+      doc.setTextColor(...NAVY);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text(`${checkedCount} / ${totalItems} items verified`, m, y + 8);
+
       y += 22;
 
-      // ── Sections ──
-      const sections: Record<string, { title: string; items: { id: string; label: string }[] }> = {
-        personal: { title: "Personal Safety", items: [
-          { id: "ppe", label: "PPE worn — Hard hat, harness, gloves, steel-toe boots, hi-vis vest" },
-          { id: "ladder", label: "Ladder safety — Secure, stable ground, correct 4:1 angle ratio" },
-          { id: "communication", label: "Communication plan — Radio/phone charged, emergency contacts known, buddy system active" },
+      // ── Checklist sections ──
+      const sections: Record<string, { title: string; items: { id: string; label: string; desc: string }[] }> = {
+        personal: { title: "1. Personal Safety", items: [
+          { id: "ppe", label: "PPE Worn", desc: "Hard hat, harness, gloves, steel-toe boots, hi-vis vest" },
+          { id: "ladder", label: "Ladder Safety", desc: "Secure, stable ground, correct 4:1 angle ratio" },
+          { id: "communication", label: "Communication Plan", desc: "Radio/phone charged, emergency contacts known, buddy system active" },
         ]},
-        site: { title: "Site Conditions", items: [
-          { id: "electrical", label: "Electrical isolation — Array isolated, inverter off, no exposed live cables" },
-          { id: "weather", label: "Weather conditions — No high winds (>25mph), rain, ice, or lightning risk" },
-          { id: "roof", label: "Roof condition — Structure safe to walk on, no loose tiles or fragile surfaces" },
-          { id: "site", label: "Site hazards marked — Trip hazards, overhead cables, confined spaces identified" },
+        site: { title: "2. Site Conditions", items: [
+          { id: "electrical", label: "Electrical Isolation", desc: "Array isolated, inverter off, no exposed live cables" },
+          { id: "weather", label: "Weather Conditions", desc: "No high winds (>25 mph), rain, ice, or lightning risk" },
+          { id: "roof", label: "Roof Condition", desc: "Structure safe to walk on, no loose tiles or fragile surfaces" },
+          { id: "site", label: "Site Hazards Identified", desc: "Trip hazards, overhead cables, confined spaces marked" },
         ]},
-        emergency: { title: "Emergency Preparedness", items: [
-          { id: "fire", label: "Fire safety — Extinguisher accessible, no flammables near electrical, exits clear" },
-          { id: "firstaid", label: "First aid ready — Kit on site, designated first-aider identified" },
+        emergency: { title: "3. Emergency Preparedness", items: [
+          { id: "fire", label: "Fire Safety", desc: "Extinguisher accessible, no flammables near electrical, exits clear" },
+          { id: "firstaid", label: "First Aid Ready", desc: "Kit on site, designated first-aider identified" },
         ]},
-        docs: { title: "Documentation", items: [
-          { id: "signoff", label: "Toolbox talk done — All team briefed on tasks, risks, and emergency procedures" },
-          { id: "building_photo", label: "Building exterior photo captured" },
+        docs: { title: "4. Documentation", items: [
+          { id: "signoff", label: "Toolbox Talk Completed", desc: "All team briefed on tasks, risks, and emergency procedures" },
+          { id: "building_photo", label: "Building Exterior Photo", desc: "Clear photograph of building from outside captured" },
         ]},
       };
 
       const checkedMap: Record<string, boolean> = {};
       savedItems.forEach((i: any) => { checkedMap[i.id] = i.checked; });
 
+      const CHECK_SIZE = 5.5;
+      const ITEM_ROW_H = 10;
+
       for (const [_, section] of Object.entries(sections)) {
-        // Section header
+        // Page break check
+        if (y > ph - 50) { doc.addPage(); y = 18; }
+
+        // Section header bar
         doc.setFillColor(...LIGHT);
-        doc.roundedRect(m, y, cw, 8, 2, 2, "F");
-        doc.setTextColor(...DARK);
+        doc.setDrawColor(...BORDER);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(m, y, cw, 8.5, 2, 2, "FD");
+        doc.setTextColor(...NAVY);
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8);
-        doc.text(section.title.toUpperCase(), m + 4, y + 5.8);
-        y += 13;
+        doc.text(section.title, m + 5, y + 5.9);
+        y += 14;
 
         for (const item of section.items) {
+          if (y > ph - 30) { doc.addPage(); y = 18; }
+
           const isChecked = checkedMap[item.id] || false;
+          const bx = m + 3;
+          const by = y - CHECK_SIZE + 1;
 
-          // Checkbox
+          // Checkbox — filled green with white tick vs empty outlined
           if (isChecked) {
-            doc.setDrawColor(...GREEN);
             doc.setFillColor(...GREEN);
-          } else {
-            doc.setDrawColor(190);
-            doc.setFillColor(255);
-          }
-          doc.roundedRect(m + 2, y - 3.5, 5, 5, 1, 1, isChecked ? "FD" : "S");
-
-          if (isChecked) {
-            doc.setTextColor(255);
+            doc.setDrawColor(...DARKGREEN);
+            doc.setLineWidth(0.6);
+            doc.roundedRect(bx, by, CHECK_SIZE, CHECK_SIZE, 1.2, 1.2, "FD");
+            // White checkmark
+            doc.setTextColor(...WHITE);
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(6);
-            doc.text("✓", m + 3.3, y + 0.4);
+            doc.setFontSize(4.5);
+            doc.text("✓", bx + CHECK_SIZE / 2, by + CHECK_SIZE / 2 + 1.5, { align: "center" });
+          } else {
+            doc.setFillColor(...WHITE);
+            doc.setDrawColor(...BORDER);
+            doc.setLineWidth(0.8);
+            doc.roundedRect(bx, by, CHECK_SIZE, CHECK_SIZE, 1.2, 1.2, "S");
           }
 
-          doc.setTextColor(...(isChecked ? DARK : GRAY));
-          doc.setFont("helvetica", isChecked ? "bold" : "normal");
+          // Item label
+          doc.setTextColor(...(isChecked ? NAVY : GRAY));
+          doc.setFont("helvetica", "bold");
           doc.setFontSize(8);
-          doc.text(item.label, m + 10, y);
+          doc.text(item.label, m + 13, y - 1.5);
 
-          y += 7.5;
+          // Item description
+          doc.setTextColor(...(isChecked ? GRAY : [180, 180, 180] as [number, number, number]));
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7);
+          doc.text(item.desc, m + 13, y + 5);
+
+          // Row separator
+          doc.setDrawColor(...BORDER);
+          doc.setLineWidth(0.15);
+          doc.line(m + 13, y + 7.5, pw - m, y + 7.5);
+
+          y += ITEM_ROW_H + 3;
         }
-        y += 5;
+        y += 8;
       }
 
       // ── Building Photo ──
       if (checklist.building_photo_url) {
-        if (y > 190) { doc.addPage(); y = 20; }
+        if (y > ph - 120) { doc.addPage(); y = 18; }
+
         doc.setFillColor(...LIGHT);
-        doc.roundedRect(m, y, cw, 8, 2, 2, "F");
-        doc.setTextColor(...DARK);
+        doc.setDrawColor(...BORDER);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(m, y, cw, 8.5, 2, 2, "FD");
+        doc.setTextColor(...NAVY);
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8);
-        doc.text("SITE EVIDENCE", m + 4, y + 5.8);
+        doc.text("5. Site Evidence — Building Exterior Photograph", m + 5, y + 5.9);
         y += 14;
 
         try {
@@ -827,39 +939,94 @@ export default function JobDetail() {
             imgEl.onerror = reject;
             imgEl.src = checklist.building_photo_url;
           });
-          const imgH = 95;
-          doc.setDrawColor(210);
+          const imgH = 100;
+          doc.setDrawColor(...BORDER);
+          doc.setLineWidth(0.6);
           doc.roundedRect(m, y, cw, imgH, 3, 3, "S");
-          doc.addImage(img, "JPEG", m + 1.5, y + 1.5, cw - 3, imgH - 3);
-          y += imgH + 10;
+          doc.addImage(img, "JPEG", m + 2, y + 2, cw - 4, imgH - 4);
+          // Caption
+          doc.setTextColor(...GRAY);
+          doc.setFont("helvetica", "italic");
+          doc.setFontSize(7);
+          doc.text("Fig. 1 — Building exterior captured at time of inspection", m + 2, y + imgH + 5);
+          y += imgH + 16;
         } catch { /* skip */ }
       }
 
-      // ── Notes ──
+      // ── Engineer's Remarks ──
       if (checklist.notes) {
-        if (y > 230) { doc.addPage(); y = 20; }
+        if (y > ph - 60) { doc.addPage(); y = 18; }
+
         doc.setFillColor(...LIGHT);
-        doc.roundedRect(m, y, cw, 8, 2, 2, "F");
-        doc.setTextColor(...DARK);
+        doc.setDrawColor(...BORDER);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(m, y, cw, 8.5, 2, 2, "FD");
+        doc.setTextColor(...NAVY);
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8);
-        doc.text("ADDITIONAL NOTES", m + 4, y + 5.8);
-        y += 14;
+        doc.text("6. Engineer's Remarks", m + 5, y + 5.9);
+        y += 16;
 
-        doc.setTextColor(...DARK);
+        doc.setTextColor(...NAVY);
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        const splitNotes = doc.splitTextToSize(checklist.notes, cw - 4);
-        doc.text(splitNotes, m + 2, y);
-        y += splitNotes.length * 5 + 12;
+        doc.setFontSize(8.5);
+        const splitNotes = doc.splitTextToSize(checklist.notes, cw - 8);
+        doc.text(splitNotes, m + 3, y);
+        y += splitNotes.length * 5 + 14;
       }
+
+      // ── Certification block ──
+      if (y > ph - 70) { doc.addPage(); y = 18; }
+      y += 6;
+
+      doc.setDrawColor(...ORANGE);
+      doc.setLineWidth(0.8);
+      doc.line(m, y, pw - m, y);
+      y += 10;
+
+      doc.setTextColor(...NAVY);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.text("CERTIFICATION", m, y);
+      y += 7;
+
+      doc.setTextColor(...GRAY);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      const certText = "I certify that the above safety inspections were carried out in accordance with Manta Ray Energy standard operating procedures and applicable health & safety regulations. All stated conditions were physically verified on site at the time of inspection.";
+      const certLines = doc.splitTextToSize(certText, cw - 4);
+      doc.text(certLines, m, y);
+      y += certLines.length * 4.5 + 10;
+
+      // Signature line
+      doc.setDrawColor(...NAVY);
+      doc.setLineWidth(0.5);
+      doc.line(m, y, m + 80, y);
+      doc.setTextColor(...NAVY);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.text(engName, m, y + 5);
+      doc.setTextColor(...GRAY);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.text("Inspecting Engineer", m, y + 10);
+
+      // Date
+      doc.setTextColor(...NAVY);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.text(today, pw - m - 50, y + 5);
+      doc.setTextColor(...GRAY);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.text("Date", pw - m - 50, y + 10);
 
       // ── Footer ──
       doc.setTextColor(...GRAY);
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(7);
-      doc.text("Manta Ray Energy  ·  Site Safety Checklist", pw / 2, 290, { align: "center" });
-      doc.text(`Generated ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}`, pw / 2, 295, { align: "center" });
+      doc.setFontSize(6.5);
+      doc.text(`Manta Ray Energy  ·  ${refNo}  ·  Page 1 of 1`, pw / 2, ph - 10, { align: "center" });
+      doc.text(`Generated ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}`, pw / 2, ph - 5, { align: "center" });
 
       const filename = `safety-checklist-${id.slice(0, 8)}.pdf`;
       const blob = doc.output("blob");
@@ -1024,7 +1191,7 @@ export default function JobDetail() {
               )}
               {canEdit && role !== "owner" && (
                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => {
-                  setEditForm({ title: job.title, description: job.description || "", address: job.address || "", status: job.status });
+                  setEditForm({ title: job.title, description: job.description || "", address: job.address || "", status: job.status, case_no: job.case_no || "" });
                   setEditOpen(true);
                 }}>
                   <Pencil className="h-3.5 w-3.5" />
@@ -1210,8 +1377,8 @@ export default function JobDetail() {
         </CardContent>
       </Card>
 
-      {/* Scheduling Panel — hidden from owner */}
-      {showScheduling && role !== "owner" && <SchedulingPanel job={job} role={role} onUpdate={fetchAll} />}
+      {/* Scheduling Panel — admin + scaffolder only (engineer doesn't need owner-confirmation status) */}
+      {showScheduling && role !== "owner" && role !== "engineer" && <SchedulingPanel job={job} role={role} onUpdate={fetchAll} />}
 
       {/* Safety Checklist — native display (admin + engineer) */}
       {safetyChecklistData && (role === "admin" || role === "engineer") && (
@@ -1416,12 +1583,23 @@ export default function JobDetail() {
               {/* Upload button for owner additional photos */}
               {(role === "owner" || role === "admin") && (
                 <div className="mb-3">
-                  <label className="cursor-pointer">
-                    <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
-                    <Button size="sm" variant="outline" className="text-xs pointer-events-none" asChild>
-                      <span><Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Photo"}</span>
-                    </Button>
-                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoUpload}
+                    disabled={uploading}
+                    ref={(el) => { fileInputRefs.current["owner-photo"] = el; }}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    onClick={() => fileInputRefs.current["owner-photo"]?.click()}
+                    disabled={uploading}
+                  >
+                    <Upload className="h-3 w-3 mr-1" />{uploading ? "Uploading…" : "Upload Photo"}
+                  </Button>
                 </div>
               )}
               {ownerPhotos.length === 0 ? (
@@ -1473,12 +1651,25 @@ export default function JobDetail() {
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Before Scaffolding</p>
                 {role === "scaffolder" && (
-                  <label className="cursor-pointer">
-                    <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={(e) => handlePhotoUpload(e, "before")} disabled={uploading} />
-                    <Button size="sm" variant="outline" className="text-xs h-7 pointer-events-none" asChild>
-                      <span><Camera className="h-3 w-3 mr-1" /> Upload Before</span>
+                  <>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handlePhotoUpload(e, "before")}
+                      disabled={uploading}
+                      ref={(el) => { fileInputRefs.current["scaffold-before"] = el; }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-7"
+                      onClick={() => fileInputRefs.current["scaffold-before"]?.click()}
+                      disabled={uploading}
+                    >
+                      <Camera className="h-3 w-3 mr-1" /> Upload Before
                     </Button>
-                  </label>
+                  </>
                 )}
               </div>
               {scaffolderBeforePhotos.length === 0 ? (
@@ -1497,12 +1688,25 @@ export default function JobDetail() {
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">After Scaffolding</p>
                 {role === "scaffolder" && (
-                  <label className="cursor-pointer">
-                    <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={(e) => handlePhotoUpload(e, "after")} disabled={uploading} />
-                    <Button size="sm" variant="outline" className="text-xs h-7 pointer-events-none" asChild>
-                      <span><Camera className="h-3 w-3 mr-1" /> Upload After</span>
+                  <>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handlePhotoUpload(e, "after")}
+                      disabled={uploading}
+                      ref={(el) => { fileInputRefs.current["scaffold-after"] = el; }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-7"
+                      onClick={() => fileInputRefs.current["scaffold-after"]?.click()}
+                      disabled={uploading}
+                    >
+                      <Camera className="h-3 w-3 mr-1" /> Upload After
                     </Button>
-                  </label>
+                  </>
                 )}
               </div>
               {scaffolderAfterPhotos.length === 0 ? (
@@ -1535,12 +1739,25 @@ export default function JobDetail() {
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Before Roof Work</p>
                 {role === "engineer" && (
-                  <label className="cursor-pointer">
-                    <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={(e) => handlePhotoUpload(e, "before")} disabled={uploading} />
-                    <Button size="sm" variant="outline" className="text-xs h-7 pointer-events-none" asChild>
-                      <span><Camera className="h-3 w-3 mr-1" /> Upload Before</span>
+                  <>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handlePhotoUpload(e, "before")}
+                      disabled={uploading}
+                      ref={(el) => { fileInputRefs.current["engineer-before"] = el; }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-7"
+                      onClick={() => fileInputRefs.current["engineer-before"]?.click()}
+                      disabled={uploading}
+                    >
+                      <Camera className="h-3 w-3 mr-1" /> Upload Before
                     </Button>
-                  </label>
+                  </>
                 )}
               </div>
               {engineerBeforePhotos.length === 0 ? (
@@ -1559,12 +1776,25 @@ export default function JobDetail() {
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">After Roof Work</p>
                 {role === "engineer" && (
-                  <label className="cursor-pointer">
-                    <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={(e) => handlePhotoUpload(e, "after")} disabled={uploading} />
-                    <Button size="sm" variant="outline" className="text-xs h-7 pointer-events-none" asChild>
-                      <span><Camera className="h-3 w-3 mr-1" /> Upload After</span>
+                  <>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handlePhotoUpload(e, "after")}
+                      disabled={uploading}
+                      ref={(el) => { fileInputRefs.current["engineer-after"] = el; }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-7"
+                      onClick={() => fileInputRefs.current["engineer-after"]?.click()}
+                      disabled={uploading}
+                    >
+                      <Camera className="h-3 w-3 mr-1" /> Upload After
                     </Button>
-                  </label>
+                  </>
                 )}
               </div>
               {engineerAfterPhotos.length === 0 ? (
@@ -1750,6 +1980,12 @@ export default function JobDetail() {
               <Label className="text-xs">Address</Label>
               <Input value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
             </div>
+            {role === "admin" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Case Number (SolarEdge)</Label>
+                <Input value={editForm.case_no} onChange={(e) => setEditForm({ ...editForm, case_no: e.target.value })} placeholder="e.g. SE-2024-00123" />
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label className="text-xs">Description</Label>
               <Textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={3} />

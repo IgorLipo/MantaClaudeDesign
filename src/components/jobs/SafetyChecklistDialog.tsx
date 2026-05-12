@@ -320,7 +320,6 @@ export default function SafetyChecklistDialog({ open, onOpenChange, jobId, engin
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
                 className="hidden"
                 onChange={handlePhotoChange}
               />
