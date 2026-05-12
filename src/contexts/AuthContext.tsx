@@ -23,6 +23,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, firstName: string, lastName: string, role?: string, businessAddress?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  signingOut: boolean;
   refreshRole: () => Promise<void>;
 }
 
@@ -34,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [signingOut, setSigningOut] = useState(false);
 
   const fetchProfileAndRole = async (userId: string) => {
     const [profileRes, roleRes] = await Promise.all([
@@ -104,15 +106,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    setSigningOut(true);
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      // Force-clear local state even if Supabase call fails
+    }
+    localStorage.clear();
     setUser(null);
     setSession(null);
     setProfile(null);
     setRole(null);
+    setSigningOut(false);
+    window.location.href = "/login";
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, role, loading, signIn, signUp, signOut, refreshRole }}>
+    <AuthContext.Provider value={{ user, session, profile, role, loading, signingOut, signIn, signUp, signOut, refreshRole }}>
       {children}
     </AuthContext.Provider>
   );

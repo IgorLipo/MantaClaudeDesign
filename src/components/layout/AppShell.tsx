@@ -66,7 +66,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const { role, profile, signOut } = useAuth();
+  const { role, profile, signingOut, signOut } = useAuth();
   const { dark, toggle } = useTheme();
 
   const visibleItems = navItems.filter(
@@ -179,11 +179,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             <button
               onClick={signOut}
+              disabled={signingOut}
               title="Sign Out"
-              className="flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors duration-quick"
+              className="flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors duration-quick disabled:opacity-50"
             >
               <LogOut className="h-4 w-4" />
-              {sidebarOpen && <span className="text-xs">Sign out</span>}
+              {sidebarOpen && <span className="text-xs">{signingOut ? "Signing out…" : "Sign out"}</span>}
             </button>
           </div>
           <button
@@ -267,10 +268,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
             <button
               onClick={() => { signOut(); setMobileMenuOpen(false); }}
-              className="flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/60 w-full transition-colors duration-quick"
+              disabled={signingOut}
+              className="flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/60 w-full transition-colors duration-quick disabled:opacity-50"
             >
               <LogOut className="h-5 w-5" />
-              <span>Sign Out</span>
+              <span>{signingOut ? "Signing out…" : "Sign Out"}</span>
             </button>
           </nav>
         </div>
