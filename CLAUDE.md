@@ -222,7 +222,7 @@ Multiple names → comma-separated in one cell.
 
 ## 15. Production Backend Ownership
 
-Current backend: **Lovable-managed Supabase** (project id `gyfwmbmhouohjxgprabz`).
+Current backend: **Supabase** (project id `nmdbngcwmrgqtpzukwkf`, name `manta-ray-energy`).
 
 **Long-term recommendation:** external Supabase owned directly by product owner. Migration should include schema, storage bucket, auth users, edge functions.
 
@@ -264,7 +264,7 @@ Current backend: **Lovable-managed Supabase** (project id `gyfwmbmhouohjxgprabz`
 - **GitHub:** `git@github.com:IgorLipo/MantaClaudeDesign.git` (origin, SSH)
 - **Source of truth:** this repo — the Lovable workspace is **frozen**
 - **Hosting target:** Vercel (static SPA build from `dist/`)
-- **Supabase:** currently still pointing at the Lovable-issued project — migration to a user-owned project is pending (see §15 and the migration checklist in `docs/migration-from-lovable.md` once it exists)
+- **Supabase:** migrated to user-owned project `nmdbngcwmrgqtpzukwkf` (`manta-ray-energy`)
 
 ---
 
