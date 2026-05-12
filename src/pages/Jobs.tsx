@@ -101,8 +101,13 @@ export default function Jobs() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <section className="border-b border-border/60">
-        <div className="p-4 lg:p-10 max-w-7xl mx-auto">
+      <section className="relative overflow-hidden border-b border-border/60">
+        <div
+          aria-hidden
+          className="absolute -top-24 -right-16 h-72 w-72 rounded-full blur-3xl opacity-40 pointer-events-none"
+          style={{ background: "radial-gradient(closest-side, hsl(22 96% 46% / 0.25), transparent)" }}
+        />
+        <div className="relative p-4 lg:p-10 max-w-7xl mx-auto">
           <div className="flex flex-wrap items-end justify-between gap-4 animate-em-enter">
             <div className="space-y-2 min-w-0">
               <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">{roleLabel} · overview</span>
@@ -299,6 +304,14 @@ export default function Jobs() {
           </div>
         ) : (
           <div className="rounded-lg bg-card ring-1 ring-border/80 shadow-xs overflow-hidden animate-em-enter" style={{ animationDelay: "160ms" }}>
+            <div className="px-3 sm:px-5 py-3 border-b border-border/60 flex items-center justify-between">
+              <div>
+                <h2 className="font-display text-lg text-foreground">All jobs</h2>
+                <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground mt-0.5">
+                  {filtered.length} job{filtered.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+            </div>
             {filtered.map((job, i) => (
               <button
                 key={job.id}
