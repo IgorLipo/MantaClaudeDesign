@@ -83,24 +83,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, firstName: string, lastName: string, role?: string, businessAddress?: string) => {
+    const selectedRole = (role || "owner") as AppRole;
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { first_name: firstName, last_name: lastName, signup_role: role || "owner" } },
+      options: { data: { first_name: firstName, last_name: lastName, signup_role: selectedRole } },
     });
     if (!error && data.user) {
-      const selectedRole = role || "owner";
-      if (selectedRole !== "owner") {
-        // Update the default 'owner' role to the selected role via edge function
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          await supabase.functions.invoke("update-signup-role", {
-            body: { user_id: data.user.id, role: selectedRole, business_address: businessAddress || "" },
-            headers: { Authorization: `Bearer ${session.access_token}` },
-          });
-          // Update local role immediately so routing works correctly
-          setRole(selectedRole as AppRole);
-        }
+      // DB trigger handle_new_user reads signup_role from metadata — role is already correct
+      setRole(selectedRole);
+      // Update business address via edge function if provided (best-effort)
+      if (businessAddress && data.session) {
+        supabase.functions.invoke("update-signup-role", {
+          body: { user_id: data.user.id, role: selectedRole, business_address: businessAddress },
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+        }).catch(() => {});
       }
     }
     return { error: error as Error | null };
