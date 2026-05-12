@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
@@ -269,16 +269,16 @@
 
   /* Display typography — serif italic for signature numerals/headlines */
   .font-display {
-    font-family: 'Instrument Serif', ui-serif, Georgia, serif;
-    font-weight: 400;
-    letter-spacing: -0.01em;
+    font-family: 'Syne', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
   }
 
   .font-display-italic {
-    font-family: 'Instrument Serif', ui-serif, Georgia, serif;
+    font-family: 'Syne', ui-sans-serif, system-ui, sans-serif;
     font-style: italic;
-    font-weight: 400;
-    letter-spacing: -0.005em;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   /* Status pill — apply with data-status="…" */
