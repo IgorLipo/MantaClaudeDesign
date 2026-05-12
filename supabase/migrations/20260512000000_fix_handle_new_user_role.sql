@@ -17,7 +17,7 @@ BEGIN
   INSERT INTO public.user_roles (user_id, role)
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'signup_role', 'owner')
+    COALESCE(NEW.raw_user_meta_data->>'signup_role', 'owner')::public.app_role
   );
   RETURN NEW;
 END;
