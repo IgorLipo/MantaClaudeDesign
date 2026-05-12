@@ -47,7 +47,10 @@ export default defineConfig(() => ({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
+        skipWaiting: true,
+        clientsClaim: true,
+        navigateFallback: null,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*supabase.*\/rest\/v1\/.*/i,
@@ -56,6 +59,10 @@ export default defineConfig(() => ({
               cacheName: "api-cache",
               expiration: { maxEntries: 50, maxAgeSeconds: 300 },
             },
+          },
+          {
+            urlPattern: /^https:\/\/.*supabase.*\/auth\/v1\/.*/i,
+            handler: "NetworkOnly",
           },
         ],
       },
