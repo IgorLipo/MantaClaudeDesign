@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,6 +82,7 @@ export function GuidedPhotoUpload({ jobId, onComplete }: GuidedPhotoUploadProps)
   const [currentStep, setCurrentStep] = useState(0);
   const [uploadedPhotos, setUploadedPhotos] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const step = PHOTO_STEPS[currentStep];
   const requiredDone = PHOTO_STEPS.filter((s) => s.required).every((s) => uploadedPhotos[s.id]);
@@ -184,17 +185,15 @@ export function GuidedPhotoUpload({ jobId, onComplete }: GuidedPhotoUploadProps)
               <div className="absolute top-2 right-2 bg-success text-white text-[10px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3" /> Uploaded
               </div>
-              <label className="absolute bottom-2 right-2 cursor-pointer">
-              <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={handleUpload} />
-                <Button size="sm" variant="secondary" className="text-xs" asChild>
-                  <span>Replace</span>
-                </Button>
-              </label>
+              <div className="absolute bottom-2 right-2">
+                <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={handleUpload} ref={fileInputRef} />
+                <Button size="sm" variant="secondary" className="text-xs" onClick={() => fileInputRef.current?.click()}>Replace</Button>
+              </div>
             </div>
           ) : (
-            <label className="cursor-pointer block">
-              <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={handleUpload} disabled={uploading} />
-              <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 hover:bg-primary/5 transition-colors">
+            <div className="cursor-pointer block">
+              <input type="file" accept="image/*,.pdf,application/pdf" className="hidden" onChange={handleUpload} disabled={uploading} ref={fileInputRef} />
+              <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 hover:bg-primary/5 transition-colors" onClick={() => fileInputRef.current?.click()}>
                 {uploading ? (
                   <div className="animate-pulse">
                     <Upload className="h-8 w-8 text-primary mx-auto mb-2" />
@@ -208,7 +207,7 @@ export function GuidedPhotoUpload({ jobId, onComplete }: GuidedPhotoUploadProps)
                   </>
                 )}
               </div>
-            </label>
+            </div>
           )}
         </CardContent>
       </Card>

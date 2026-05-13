@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +67,7 @@ interface Props {
 export default function SiteReportForm({ data, onChange, jobId, userId }: Props) {
   const { toast } = useToast();
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
+  const evidenceInputRef = useRef<HTMLInputElement | null>(null);
 
   const set = <K extends keyof ReportFormData>(key: K, value: ReportFormData[K]) => {
     onChange({ ...data, [key]: value });
@@ -282,13 +283,14 @@ export default function SiteReportForm({ data, onChange, jobId, userId }: Props)
                 </Button>
               </div>
             ))}
-            <label className="cursor-pointer">
+            <div className="cursor-pointer">
               <input
                 type="file" accept="image/*,.pdf,application/pdf" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleEvidenceUpload(f); }}
                 disabled={uploadingEvidence}
+                ref={evidenceInputRef}
               />
-              <div className="border-2 border-dashed border-border rounded-lg aspect-square flex flex-col items-center justify-center hover:border-primary/50 transition-colors">
+              <div className="border-2 border-dashed border-border rounded-lg aspect-square flex flex-col items-center justify-center hover:border-primary/50 transition-colors" onClick={() => evidenceInputRef.current?.click()}>
                 {uploadingEvidence ? (
                   <p className="text-xs text-muted-foreground">Uploading...</p>
                 ) : (
@@ -298,7 +300,7 @@ export default function SiteReportForm({ data, onChange, jobId, userId }: Props)
                   </>
                 )}
               </div>
-            </label>
+            </div>
           </div>
         </CardContent>
       </Card>

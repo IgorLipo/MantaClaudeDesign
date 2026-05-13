@@ -62,6 +62,7 @@ export default function OwnerOnboarding() {
   const mapInstanceRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const initDone = useRef(false);
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // If we have a jobId param (Admin-created), load it and prefill
   useEffect(() => {
@@ -382,15 +383,15 @@ export default function OwnerOnboarding() {
                 <div className="absolute top-2 right-2 bg-success text-white text-[10px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
                   <CheckCircle2 className="h-3 w-3" /> Uploaded
                 </div>
-                <label className="absolute bottom-2 right-2 cursor-pointer">
-                  <input type="file" accept="image/*,application/pdf,.pdf" capture={undefined} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(ps.id, f); }} />
-                  <Button size="sm" variant="secondary" className="text-xs" asChild><span>Replace</span></Button>
-                </label>
+                <div className="absolute bottom-2 right-2">
+                  <input type="file" accept="image/*,application/pdf,.pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(ps.id, f); }} ref={(el) => { fileInputRefs.current[ps.id] = el; }} />
+                  <Button size="sm" variant="secondary" className="text-xs" onClick={() => fileInputRefs.current[ps.id]?.click()}>Replace</Button>
+                </div>
               </div>
             ) : (
-              <label className="cursor-pointer block">
-                <input type="file" accept="image/*,application/pdf,.pdf" capture={undefined} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(ps.id, f); }} disabled={uploading} />
-                <div className="border-2 border-dashed border-border rounded-xl p-12 text-center hover:border-primary/50 hover:bg-primary/5 transition-colors">
+              <div className="cursor-pointer block">
+                <input type="file" accept="image/*,application/pdf,.pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(ps.id, f); }} disabled={uploading} ref={(el) => { fileInputRefs.current[ps.id] = el; }} />
+                <div className="border-2 border-dashed border-border rounded-xl p-12 text-center hover:border-primary/50 hover:bg-primary/5 transition-colors" onClick={() => fileInputRefs.current[ps.id]?.click()}>
                   {uploading ? (
                     <div className="animate-pulse">
                       <Upload className="h-10 w-10 text-primary mx-auto mb-2" />
@@ -404,7 +405,7 @@ export default function OwnerOnboarding() {
                     </>
                   )}
                 </div>
-              </label>
+              </div>
             )}
           </div>
         );
