@@ -13,6 +13,9 @@ export async function notify({ userId, type, title, message, data }: NotifyParam
   await supabase.from("notifications").insert({
     user_id: userId, type, title, message, data: data || {},
   });
+  // Fire-and-forget email for every in-app notification
+  const jobId = data?.job_id as string | undefined;
+  sendEmail(title, emailHtml(title, message, jobId));
 }
 
 async function getAdminIds(): Promise<string[]> {
@@ -98,8 +101,6 @@ export async function notifyStatusChange(
   for (const aid of adminIds) {
     await notify({ userId: aid, type: "status_change", title: `Job ${label}`, message: msg, data: { job_id: jobId } });
   }
-  // Email admins (fire-and-forget)
-  sendEmail(`Job ${label}: ${jobTitle}`, emailHtml(`Job ${label}`, msg, jobId));
 }
 
 export async function notifyQuoteSubmitted(jobId: string, jobTitle: string, amount: number, _ownerId?: string | null) {
@@ -108,7 +109,6 @@ export async function notifyQuoteSubmitted(jobId: string, jobTitle: string, amou
   for (const aid of adminIds) {
     await notify({ userId: aid, type: "quote", title: "New Quote Received", message: msg, data: { job_id: jobId } });
   }
-  sendEmail("New Quote Received", emailHtml("New Quote Received", msg, jobId));
 }
 
 export async function notifyQuoteDecision(scaffolderId: string, jobTitle: string, decision: string, jobId: string, finalPrice?: number) {
@@ -134,7 +134,6 @@ export async function notifyPhotoUploaded(jobId: string, jobTitle: string, admin
   for (const adminId of adminUserIds) {
     await notify({ userId: adminId, type: "photo", title: "Photos Uploaded", message: msg, data: { job_id: jobId } });
   }
-  sendEmail("Photos Uploaded", emailHtml("Photos Uploaded", msg, jobId));
 }
 
 export async function notifyScaffolderAssigned(scaffolderId: string, jobTitle: string, jobId: string) {
@@ -172,7 +171,6 @@ export async function notifyJobEdited(jobId: string, jobTitle: string, editorId:
       await notify({ userId: aid, type: "job_update", title: "Job Details Updated", message: msg, data: { job_id: jobId } });
     }
   }
-  sendEmail("Job Details Updated", emailHtml("Job Details Updated", msg, jobId));
 }
 
 export async function notifySiteReportSubmitted(jobId: string, jobTitle: string, engineerId: string) {
@@ -181,7 +179,6 @@ export async function notifySiteReportSubmitted(jobId: string, jobTitle: string,
   for (const aid of adminIds) {
     await notify({ userId: aid, type: "site_report", title: "Site Report Submitted", message: msg, data: { job_id: jobId } });
   }
-  sendEmail("Site Report Submitted", emailHtml("Site Report Submitted", msg, jobId));
 }
 
 export async function notifySafetyChecklistComplete(jobId: string, notes: string, engineerId: string) {
@@ -190,5 +187,4 @@ export async function notifySafetyChecklistComplete(jobId: string, notes: string
   for (const aid of adminIds) {
     await notify({ userId: aid, type: "safety_checklist", title: "Safety Checklist Completed", message: msg, data: { job_id: jobId, engineer_id: engineerId } });
   }
-  sendEmail("Safety Checklist Completed", emailHtml("Safety Checklist Completed", msg, jobId));
 }
