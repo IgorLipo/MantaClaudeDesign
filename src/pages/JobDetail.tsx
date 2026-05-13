@@ -1184,11 +1184,22 @@ export default function JobDetail() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {role !== "owner" && (
+              {role === "admin" ? (
+                <Select value={job.status} onValueChange={updateStatus}>
+                  <SelectTrigger className="w-[150px] h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(statusMap).map(([value, label]) => (
+                      <SelectItem key={value} value={value} className="text-xs">{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : role !== "owner" ? (
                 <Badge variant={statusVariantOf(job.status) as any} className="whitespace-nowrap">
                   {statusMap[job.status]}
                 </Badge>
-              )}
+              ) : null}
               {canEdit && role !== "owner" && (
                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => {
                   setEditForm({ title: job.title, description: job.description || "", address: job.address || "", status: job.status, case_no: job.case_no || "" });
