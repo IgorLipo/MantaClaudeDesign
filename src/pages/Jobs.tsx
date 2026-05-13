@@ -5,13 +5,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Briefcase, FileSpreadsheet, ArrowUpRight, MapPin, X, LayoutList, Columns2, Clock, HardHat, CheckCircle2 } from "lucide-react";
+import { Plus, Search, Briefcase, FileSpreadsheet, ArrowUpRight, MapPin, X, LayoutList, Columns2, Clock, HardHat, CheckCircle2, Pencil } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { AdminCreateJobDialog } from "@/components/jobs/AdminCreateJobDialog";
 import { KanbanBoard } from "@/components/jobs/KanbanBoard";
 import { exportAllJobsToExcel } from "@/lib/exportJobsXlsx";
-import { STATUS_LABELS, STATUS_VARIANTS, PENDING_STATUSES, ACTIVE_FILTER_STATUSES } from "@/constants/status";
+import { ALL_STATUSES, STATUS_LABELS, STATUS_VARIANTS, PENDING_STATUSES, ACTIVE_FILTER_STATUSES } from "@/constants/status";
 
 const filterTabs = [
   { key: "", label: "All" },
@@ -90,6 +91,16 @@ export default function Jobs() {
       toast({ title: "Export failed", description: e.message, variant: "destructive" });
     }
     setExporting(false);
+  };
+
+  const handleStatusChange = async (jobId: string, newStatus: string) => {
+    const { error } = await supabase.from("jobs").update({ status: newStatus }).eq("id", jobId);
+    if (error) {
+      toast({ title: "Failed to update status", description: error.message, variant: "destructive" });
+      return;
+    }
+    setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status: newStatus } : j)));
+    toast({ title: "Status updated", description: `Job moved to ${STATUS_LABELS[newStatus]}` });
   };
 
   const setFilter = (key: string) => {
@@ -313,14 +324,14 @@ export default function Jobs() {
               </div>
             </div>
             {filtered.map((job, i) => (
-              <button
+              <div
                 key={job.id}
-                onClick={() => navigate(`/jobs/${job.id}`)}
                 className={cn(
-                  "group w-full text-left px-2 sm:px-5 py-2 sm:py-3.5 flex items-center gap-2 sm:gap-4",
+                  "group w-full text-left px-2 sm:px-5 py-2 sm:py-3.5 flex items-center gap-2 sm:gap-4 cursor-pointer",
                   "hover:bg-subtle/60 transition-colors duration-quick",
                   i !== 0 && "border-t border-border/60"
                 )}
+                onClick={() => navigate(`/jobs/${job.id}`)}
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -338,11 +349,35 @@ export default function Jobs() {
                     <span className="truncate">{job.address || "Address pending"}</span>
                   </div>
                 </div>
-                <Badge variant={STATUS_VARIANTS[job.status] as any} className="shrink-0 text-[9px] px-1 py-0 h-5 leading-none font-medium">
-                  {STATUS_LABELS[job.status] || job.status}
-                </Badge>
+                {role === "admin" ? (
+                  <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <Select value={job.status} onValueChange={(v) => handleStatusChange(job.id, v)}>
+                      <SelectTrigger className="w-[135px] h-7 text-[10px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ALL_STATUSES.map((s) => (
+                          <SelectItem key={s} value={s} className="text-[10px]">
+                            {STATUS_LABELS[s]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <button
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/jobs/${job.id}`); }}
+                      title="Edit job"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <Badge variant={STATUS_VARIANTS[job.status] as any} className="shrink-0 text-[9px] px-1 py-0 h-5 leading-none font-medium">
+                    {STATUS_LABELS[job.status] || job.status}
+                  </Badge>
+                )}
                 <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground transition-[color,transform] duration-quick -translate-x-0.5 group-hover:translate-x-0 shrink-0" />
-              </button>
+              </div>
             ))}
           </div>
         )}
