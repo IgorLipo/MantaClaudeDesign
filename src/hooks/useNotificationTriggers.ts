@@ -20,6 +20,47 @@ async function getAdminIds(): Promise<string[]> {
   return data ? data.map((r) => r.user_id) : [];
 }
 
+async function getAdminEmails(): Promise<string[]> {
+  const adminIds = await getAdminIds();
+  if (adminIds.length === 0) return [];
+  const { data } = await supabase.from("profiles").select("user_id")
+    .in("user_id", adminIds);
+  // get emails from auth.users via admin API isn't available client-side
+  // Use the email from the admin user (hardcoded for now since single admin)
+  // In production, store admin notification email in admin_settings
+  const { data: settings } = await supabase.from("admin_settings").select("notification_email").eq("id", 1).single();
+  if (settings?.notification_email) return [settings.notification_email];
+  // Fallback: use known admin email
+  return ["admin@mantaray.energy"];
+}
+
+async function sendEmail(subject: string, html: string) {
+  try {
+    const emails = await getAdminEmails();
+    for (const to of emails) {
+      await supabase.functions.invoke("send-notification-email", {
+        body: { to, subject, html },
+      });
+    }
+  } catch (e) {
+    console.warn("[Email] Failed to send notification email:", e);
+  }
+}
+
+function emailHtml(title: string, message: string, jobId?: string): string {
+  const link = jobId ? `https://manta-claude-design.vercel.app/jobs/${jobId}` : "https://manta-claude-design.vercel.app";
+  return `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px">
+      <h2 style="color:#F97316">Manta Ray Energy</h2>
+      <h3>${title}</h3>
+      <p>${message}</p>
+      ${jobId ? `<p><a href="${link}" style="color:#F97316">View job details →</a></p>` : ""}
+      <hr style="border:1px solid #eee;margin:20px 0" />
+      <p style="color:#888;font-size:12px">Sent from Manta Ray Energy platform. <a href="${link}">Open dashboard</a>.</p>
+    </div>
+  `;
+}
+
 export async function notifyStatusChange(
   jobId: string, jobTitle: string, newStatus: string,
   ownerId?: string | null, assignedScaffolderIds?: string[]
@@ -57,18 +98,17 @@ export async function notifyStatusChange(
   for (const aid of adminIds) {
     await notify({ userId: aid, type: "status_change", title: `Job ${label}`, message: msg, data: { job_id: jobId } });
   }
+  // Email admins (fire-and-forget)
+  sendEmail(`Job ${label}: ${jobTitle}`, emailHtml(`Job ${label}`, msg, jobId));
 }
 
 export async function notifyQuoteSubmitted(jobId: string, jobTitle: string, amount: number, _ownerId?: string | null) {
   const adminIds = await getAdminIds();
+  const msg = `A quote of £${amount.toLocaleString()} has been submitted for "${jobTitle}".`;
   for (const aid of adminIds) {
-    await notify({
-      userId: aid, type: "quote",
-      title: "New Quote Received",
-      message: `A quote of £${amount.toLocaleString()} has been submitted for "${jobTitle}".`,
-      data: { job_id: jobId },
-    });
+    await notify({ userId: aid, type: "quote", title: "New Quote Received", message: msg, data: { job_id: jobId } });
   }
+  sendEmail("New Quote Received", emailHtml("New Quote Received", msg, jobId));
 }
 
 export async function notifyQuoteDecision(scaffolderId: string, jobTitle: string, decision: string, jobId: string, finalPrice?: number) {
@@ -90,14 +130,11 @@ export async function notifyOwnerFinalPrice(ownerId: string, jobTitle: string, f
 }
 
 export async function notifyPhotoUploaded(jobId: string, jobTitle: string, adminUserIds: string[]) {
+  const msg = `New photos have been uploaded for job "${jobTitle}". Review pending.`;
   for (const adminId of adminUserIds) {
-    await notify({
-      userId: adminId, type: "photo",
-      title: "Photos Uploaded",
-      message: `New photos have been uploaded for job "${jobTitle}". Review pending.`,
-      data: { job_id: jobId },
-    });
+    await notify({ userId: adminId, type: "photo", title: "Photos Uploaded", message: msg, data: { job_id: jobId } });
   }
+  sendEmail("Photos Uploaded", emailHtml("Photos Uploaded", msg, jobId));
 }
 
 export async function notifyScaffolderAssigned(scaffolderId: string, jobTitle: string, jobId: string) {
@@ -128,39 +165,30 @@ export async function notifyOwnerPhotoSubmitted(ownerId: string, jobTitle: strin
 }
 
 export async function notifyJobEdited(jobId: string, jobTitle: string, editorId: string) {
+  const msg = `Details for "${jobTitle}" have been updated.`;
   const adminIds = await getAdminIds();
   for (const aid of adminIds) {
     if (aid !== editorId) {
-      await notify({
-        userId: aid, type: "job_update",
-        title: "Job Details Updated",
-        message: `Details for "${jobTitle}" have been updated.`,
-        data: { job_id: jobId },
-      });
+      await notify({ userId: aid, type: "job_update", title: "Job Details Updated", message: msg, data: { job_id: jobId } });
     }
   }
+  sendEmail("Job Details Updated", emailHtml("Job Details Updated", msg, jobId));
 }
 
 export async function notifySiteReportSubmitted(jobId: string, jobTitle: string, engineerId: string) {
+  const msg = `The site report for "${jobTitle}" has been submitted by the engineer.`;
   const adminIds = await getAdminIds();
   for (const aid of adminIds) {
-    await notify({
-      userId: aid, type: "site_report",
-      title: "Site Report Submitted",
-      message: `The site report for "${jobTitle}" has been submitted by the engineer.`,
-      data: { job_id: jobId },
-    });
+    await notify({ userId: aid, type: "site_report", title: "Site Report Submitted", message: msg, data: { job_id: jobId } });
   }
+  sendEmail("Site Report Submitted", emailHtml("Site Report Submitted", msg, jobId));
 }
 
 export async function notifySafetyChecklistComplete(jobId: string, notes: string, engineerId: string) {
+  const msg = `Engineer has completed the safety checklist for job #${jobId.slice(0, 8)}.${notes ? ` Notes: ${notes.slice(0, 100)}` : ""}`;
   const adminIds = await getAdminIds();
   for (const aid of adminIds) {
-    await notify({
-      userId: aid, type: "safety_checklist",
-      title: "Safety Checklist Completed",
-      message: `Engineer has completed the safety checklist for job #${jobId.slice(0, 8)}.${notes ? ` Notes: ${notes.slice(0, 100)}` : ""}`,
-      data: { job_id: jobId, engineer_id: engineerId },
-    });
+    await notify({ userId: aid, type: "safety_checklist", title: "Safety Checklist Completed", message: msg, data: { job_id: jobId, engineer_id: engineerId } });
   }
+  sendEmail("Safety Checklist Completed", emailHtml("Safety Checklist Completed", msg, jobId));
 }
