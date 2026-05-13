@@ -82,6 +82,10 @@ export function AdminCreateJobDialog({ open, onOpenChange, onCreated }: Props) {
     } as any);
 
     logAudit(user.id, "admin_job_created", "job", job.id, { case_no: caseNo.trim() });
+    // Notify all admins about new job
+    supabase.functions.invoke("send-notification-email", {
+      body: { to: "lipo49@gmail.com", subject: `New Job: ${job.title || caseNo}`, html: `<h2 style="color:#F97316">Manta Ray Energy</h2><h3>New Job Created</h3><p>Job <strong>${job.title || caseNo}</strong> (${caseNo}) created.</p><p><a href="https://manta-claude-design.vercel.app/jobs/${job.id}" style="color:#F97316">View job →</a></p>` },
+    }).catch(() => {});
     toast({ title: "Job created" });
     setSubmitting(false);
     reset();

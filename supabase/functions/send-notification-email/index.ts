@@ -1,5 +1,3 @@
-import { Resend } from "npm:resend@4.1.2";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -25,22 +23,30 @@ Deno.serve(async (req) => {
       });
     }
 
-    const resend = new Resend(apiKey);
-    const { data, error } = await resend.emails.send({
-      from: "Manta Ray Energy <onboarding@resend.dev>",
-      to: [to],
-      subject,
-      html,
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "Manta Ray Energy <onboarding@resend.dev>",
+        to: [to],
+        subject,
+        html,
+      }),
     });
 
-    if (error) {
-      console.error("Resend send failed:", error);
-      return new Response(JSON.stringify({ error: error.message }), {
+    const body = await res.json();
+
+    if (!res.ok) {
+      console.error("Resend API error:", body);
+      return new Response(JSON.stringify({ error: body.message || "Resend API error" }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ success: true, id: data?.id }), {
+    return new Response(JSON.stringify({ success: true, id: body.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
