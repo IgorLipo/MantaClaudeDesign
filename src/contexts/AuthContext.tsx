@@ -42,6 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.from("profiles").select("*").eq("user_id", userId).single(),
       supabase.from("user_roles").select("role").eq("user_id", userId).single(),
     ]);
+    if (profileRes.error) console.error("[Auth] Profile fetch failed:", profileRes.error.message);
+    if (roleRes.error) console.error("[Auth] Role fetch failed:", roleRes.error.message);
     if (profileRes.data) setProfile(profileRes.data as Profile);
     if (roleRes.data) setRole(roleRes.data.role as AppRole);
   };
@@ -62,7 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          try { await fetchProfileAndRole(session.user.id); } catch {}
+          try { await fetchProfileAndRole(session.user.id); } catch (err) {
+            console.error("[Auth] Profile/role load failed on auth change:", err);
+          }
         } else {
           setProfile(null);
           setRole(null);
@@ -76,10 +80,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        try { await fetchProfileAndRole(session.user.id); } catch {}
+        try { await fetchProfileAndRole(session.user.id); } catch (err) {
+          console.error("[Auth] Profile/role load failed on init:", err);
+        }
       }
       setLoading(false);
-    }).catch(() => {
+    }).catch((err) => {
+      console.error("[Auth] getSession failed:", err);
       if (!cancelled) setLoading(false);
     });
 
@@ -119,11 +126,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     setSigningOut(true);
     try {
-      await supabase.auth.signOut();
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 3000)),
+      ]);
     } catch (e) {
-      // Force-clear local state even if Supabase call fails
+      console.warn("[Auth] signOut call did not complete normally, forcing cleanup:", e);
     }
     localStorage.clear();
+    sessionStorage.clear();
     setUser(null);
     setSession(null);
     setProfile(null);
