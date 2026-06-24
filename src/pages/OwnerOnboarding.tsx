@@ -68,18 +68,21 @@ export default function OwnerOnboarding() {
   useEffect(() => {
     if (!params.jobId) return;
     (async () => {
-      const { data } = await supabase.from("jobs").select("*").eq("id", params.jobId).maybeSingle();
-      if (data) {
-        setExistingJob(data);
-        setJobId(data.id);
-        if (data.case_no) setCaseNo(data.case_no);
-        if (data.address) { setAddress(data.address); setAddressConfirmed(true); }
-        if (data.lat) setLat(Number(data.lat));
-        if (data.lng) setLng(Number(data.lng));
-        if (data.service_type) setServiceType(data.service_type);
-        if (data.panel_count != null) setPanelCount(String(data.panel_count));
+      try {
+        const { data } = await supabase.from("jobs").select("*").eq("id", params.jobId).maybeSingle();
+        if (data) {
+          setExistingJob(data);
+          setJobId(data.id);
+          if (data.case_no) setCaseNo(data.case_no);
+          if (data.address) { setAddress(data.address); setAddressConfirmed(true); }
+          if (data.lat) setLat(Number(data.lat));
+          if (data.lng) setLng(Number(data.lng));
+          if (data.service_type) setServiceType(data.service_type);
+          if (data.panel_count != null) setPanelCount(String(data.panel_count));
+        }
+      } finally {
+        setLoadingJob(false);
       }
-      setLoadingJob(false);
     })();
   }, [params.jobId]);
 
@@ -235,6 +238,7 @@ export default function OwnerOnboarding() {
     if (step === 2) return !!panelCount && parseInt(panelCount, 10) > 0;
     if (step > 2 && step <= PHOTO_STEPS.length + 2) {
       const ps = PHOTO_STEPS[step - 3];
+      if (!ps) return true;
       return !ps.required || !!photos[ps.id];
     }
     return requiredPhotosDone;
@@ -356,6 +360,7 @@ export default function OwnerOnboarding() {
       {/* Photo Steps */}
       {step > 2 && step <= PHOTO_STEPS.length + 2 && (() => {
         const ps = PHOTO_STEPS[step - 3];
+        if (!ps) return null;
         const Icon = ps.icon;
         const uploaded = photos[ps.id];
 
@@ -460,7 +465,7 @@ export default function OwnerOnboarding() {
 
         {step < PHOTO_STEPS.length + 3 ? (
           <div className="flex gap-2">
-            {step > 2 && step <= PHOTO_STEPS.length + 2 && !PHOTO_STEPS[step - 3].required && !photos[PHOTO_STEPS[step - 3].id] && (
+            {step > 2 && step <= PHOTO_STEPS.length + 2 && PHOTO_STEPS[step - 3] && !PHOTO_STEPS[step - 3].required && !photos[PHOTO_STEPS[step - 3].id] && (
               <Button variant="ghost" size="sm" onClick={() => setStep((s) => s + 1)}>Skip</Button>
             )}
             <Button size="sm" disabled={!canProceed()} onClick={() => setStep((s) => s + 1)}>

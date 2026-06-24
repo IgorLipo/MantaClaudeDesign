@@ -39,8 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchProfileAndRole = async (userId: string) => {
     const [profileRes, roleRes] = await Promise.all([
-      supabase.from("profiles").select("*").eq("user_id", userId).single(),
-      supabase.from("user_roles").select("role").eq("user_id", userId).single(),
+      supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
+      supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
     ]);
     if (profileRes.error) console.error("[Auth] Profile fetch failed:", profileRes.error.message);
     if (roleRes.error) console.error("[Auth] Role fetch failed:", roleRes.error.message);
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshRole = async () => {
     if (!user) return;
-    const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single();
+    const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
     if (data) setRole(data.role as AppRole);
   };
 

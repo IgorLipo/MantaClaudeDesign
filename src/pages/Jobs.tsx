@@ -36,26 +36,29 @@ export default function Jobs() {
   const statusFilter = searchParams.get("filter") || "";
 
   const fetchJobs = async () => {
-    if (role === "engineer" || role === "scaffolder") {
-      // Only show assigned jobs for engineers and scaffolders
-      const { data: assignments } = await supabase
-        .from("job_assignments")
-        .select("job_id")
-        .eq("scaffolder_id", user?.id)
-        .eq("assignment_role", role);
-      const jobIds = (assignments || []).map((a) => a.job_id);
-      if (jobIds.length === 0) { setJobs([]); setLoading(false); return; }
-      const { data } = await supabase
-        .from("jobs")
-        .select("*")
-        .in("id", jobIds)
-        .order("created_at", { ascending: false });
-      if (data) setJobs(data);
-    } else {
-      const { data } = await supabase.from("jobs").select("*").order("created_at", { ascending: false });
-      if (data) setJobs(data);
+    try {
+      if (role === "engineer" || role === "scaffolder") {
+        // Only show assigned jobs for engineers and scaffolders
+        const { data: assignments } = await supabase
+          .from("job_assignments")
+          .select("job_id")
+          .eq("scaffolder_id", user?.id)
+          .eq("assignment_role", role);
+        const jobIds = (assignments || []).map((a) => a.job_id);
+        if (jobIds.length === 0) { setJobs([]); return; }
+        const { data } = await supabase
+          .from("jobs")
+          .select("*")
+          .in("id", jobIds)
+          .order("created_at", { ascending: false });
+        if (data) setJobs(data);
+      } else {
+        const { data } = await supabase.from("jobs").select("*").order("created_at", { ascending: false });
+        if (data) setJobs(data);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // KPI counts from the full job list
@@ -72,7 +75,7 @@ export default function Jobs() {
   const filtered = jobs.filter((j) => {
     const q = search.toLowerCase();
     const matches =
-      j.title.toLowerCase().includes(q) ||
+      (j.title || "").toLowerCase().includes(q) ||
       (j.address || "").toLowerCase().includes(q) ||
       (j.case_no || "").toLowerCase().includes(q);
     if (!matches) return false;

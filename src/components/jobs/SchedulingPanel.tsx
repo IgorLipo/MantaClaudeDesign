@@ -21,6 +21,7 @@ interface SchedulingPanelProps {
 
 
 export function SchedulingPanel({ job, role, onUpdate }: SchedulingPanelProps) {
+  if (!job) return null;
   const { user } = useAuth();
   const { toast } = useToast();
   const [date, setDate] = useState<Date | undefined>(job.scheduled_date ? new Date(job.scheduled_date) : undefined);
@@ -104,7 +105,7 @@ export function SchedulingPanel({ job, role, onUpdate }: SchedulingPanelProps) {
           <div className="bg-secondary/50 rounded-xl p-3 space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="h-4 w-4 text-primary" />
-              <span className="font-medium">{format(new Date(job.scheduled_date), "EEE, dd MMM yyyy")}</span>
+              <span className="font-medium">{!isNaN(new Date(job.scheduled_date).getTime()) ? format(new Date(job.scheduled_date), "EEE, dd MMM yyyy") : job.scheduled_date}</span>
             </div>
             {job.schedule_response === "confirmed" ? (
               <div className="flex items-center gap-1.5 text-xs text-success">

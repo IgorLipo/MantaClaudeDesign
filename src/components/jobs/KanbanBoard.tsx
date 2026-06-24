@@ -40,41 +40,43 @@ export function KanbanBoard({ onStatusChange }: Props) {
   const isDragging = useRef(false);
 
   const fetchData = async () => {
-    const [{ data: jobData }, { data: assignData }, { data: profileData }] = await Promise.all([
-      supabase.from("jobs").select("id,title,case_no,address,status").order("created_at", { ascending: false }),
-      supabase.from("job_assignments").select("job_id,scaffolder_id,assignment_role"),
-      supabase.from("profiles").select("user_id,first_name,last_name"),
-    ]);
+    try {
+      const [{ data: jobData }, { data: assignData }, { data: profileData }] = await Promise.all([
+        supabase.from("jobs").select("id,title,case_no,address,status").order("created_at", { ascending: false }),
+        supabase.from("job_assignments").select("job_id,scaffolder_id,assignment_role"),
+        supabase.from("profiles").select("user_id,first_name,last_name"),
+      ]);
 
-    if (jobData) setJobs(jobData);
+      if (jobData) setJobs(jobData);
 
-    if (assignData && profileData) {
-      const profileMap = new Map<string, string>();
-      (profileData || []).forEach((p: any) => {
-        profileMap.set(p.user_id, `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Unknown");
-      });
+      if (assignData && profileData) {
+        const profileMap = new Map<string, string>();
+        (profileData || []).forEach((p: any) => {
+          profileMap.set(p.user_id, `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Unknown");
+        });
 
-      const grouped: Record<string, { scaffolderNames: string[]; engineerNames: string[] }> = {};
-      (assignData || []).forEach((a: any) => {
-        if (!grouped[a.job_id]) grouped[a.job_id] = { scaffolderNames: [], engineerNames: [] };
-        const name = profileMap.get(a.scaffolder_id) || "Unknown";
-        if (a.assignment_role === "engineer") {
-          grouped[a.job_id].engineerNames.push(name);
-        } else {
-          grouped[a.job_id].scaffolderNames.push(name);
-        }
-      });
+        const grouped: Record<string, { scaffolderNames: string[]; engineerNames: string[] }> = {};
+        (assignData || []).forEach((a: any) => {
+          if (!grouped[a.job_id]) grouped[a.job_id] = { scaffolderNames: [], engineerNames: [] };
+          const name = profileMap.get(a.scaffolder_id) || "Unknown";
+          if (a.assignment_role === "engineer") {
+            grouped[a.job_id].engineerNames.push(name);
+          } else {
+            grouped[a.job_id].scaffolderNames.push(name);
+          }
+        });
 
-      setAssigns(
-        Object.entries(grouped).map(([job_id, info]) => ({
-          job_id,
-          scaffolderNames: info.scaffolderNames,
-          engineerNames: info.engineerNames,
-        }))
-      );
+        setAssigns(
+          Object.entries(grouped).map(([job_id, info]) => ({
+            job_id,
+            scaffolderNames: info.scaffolderNames,
+            engineerNames: info.engineerNames,
+          }))
+        );
+      }
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);

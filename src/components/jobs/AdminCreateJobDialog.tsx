@@ -64,7 +64,7 @@ export function AdminCreateJobDialog({ open, onOpenChange, onCreated }: Props) {
       .from("admin_settings")
       .select("default_job_settings")
       .eq("id", 1)
-      .single();
+      .maybeSingle();
 
     if (adminSettings?.default_job_settings && Object.keys(adminSettings.default_job_settings as Record<string, unknown>).length > 0) {
       await supabase

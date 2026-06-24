@@ -61,16 +61,19 @@ export default function AdminSettings() {
       return;
     }
     const load = async () => {
-      const { data } = await supabase
-        .from("admin_settings")
-        .select("default_job_settings")
-        .eq("id", 1)
-        .single();
+      try {
+        const { data } = await supabase
+          .from("admin_settings")
+          .select("default_job_settings")
+          .eq("id", 1)
+          .maybeSingle();
 
-      if (data?.default_job_settings) {
-        setSettings({ ...DEFAULTS, ...(data.default_job_settings as any) });
+        if (data?.default_job_settings) {
+          setSettings({ ...DEFAULTS, ...(data.default_job_settings as any) });
+        }
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     load();
   }, [role, navigate]);

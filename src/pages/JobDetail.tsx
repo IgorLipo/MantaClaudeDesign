@@ -186,65 +186,67 @@ export default function JobDetail() {
 
   const fetchAll = useCallback(async () => {
     if (!id) return;
-    const [jobRes, quotesRes, photosRes, assignRes] = await Promise.all([
-      supabase.from("jobs").select("*").eq("id", id).maybeSingle(),
-      supabase.from("quotes").select("*").eq("job_id", id).order("submitted_at", { ascending: false }),
-      supabase.from("photos").select("*").eq("job_id", id).order("created_at", { ascending: false }),
-      supabase.from("job_assignments").select("*").eq("job_id", id),
-    ]);
-    if (jobRes.data) setJob(jobRes.data);
-    if (quotesRes.data) setQuotes(quotesRes.data as Quote[]);
-    if (photosRes.data) setPhotos(photosRes.data as Photo[]);
-    if (assignRes.data) setAssignments(assignRes.data);
+    try {
+      const [jobRes, quotesRes, photosRes, assignRes] = await Promise.all([
+        supabase.from("jobs").select("*").eq("id", id).maybeSingle(),
+        supabase.from("quotes").select("*").eq("job_id", id).order("submitted_at", { ascending: false }),
+        supabase.from("photos").select("*").eq("job_id", id).order("created_at", { ascending: false }),
+        supabase.from("job_assignments").select("*").eq("job_id", id),
+      ]);
+      if (jobRes.data) setJob(jobRes.data);
+      if (quotesRes.data) setQuotes(quotesRes.data as Quote[]);
+      if (photosRes.data) setPhotos(photosRes.data as Photo[]);
+      if (assignRes.data) setAssignments(assignRes.data);
 
-    const [rolesRes, adminRolesRes, engRolesRes] = await Promise.all([
-      supabase.from("user_roles").select("user_id").eq("role", "scaffolder"),
-      supabase.from("user_roles").select("user_id").eq("role", "admin"),
-      supabase.from("user_roles").select("user_id").eq("role", "engineer"),
-    ]);
-    const allUserIds = [
-      ...(rolesRes.data || []).map(r => r.user_id),
-      ...(engRolesRes.data || []).map(r => r.user_id),
-    ];
-    if (allUserIds.length > 0) {
-      const { data: profs } = await supabase.from("profiles").select("user_id, first_name, last_name").in("user_id", allUserIds);
-      if (profs) {
-        const scaffolderUserIds = new Set((rolesRes.data || []).map(r => r.user_id));
-        const engineerUserIds = new Set((engRolesRes.data || []).map(r => r.user_id));
-        setScaffolders(profs.filter(p => scaffolderUserIds.has(p.user_id)));
-        setEngineers(profs.filter(p => engineerUserIds.has(p.user_id)));
-        const map: Record<string, Scaffolder> = {};
-        profs.forEach((p) => { map[p.user_id] = p; });
-        setProfiles(map);
+      const [rolesRes, adminRolesRes, engRolesRes] = await Promise.all([
+        supabase.from("user_roles").select("user_id").eq("role", "scaffolder"),
+        supabase.from("user_roles").select("user_id").eq("role", "admin"),
+        supabase.from("user_roles").select("user_id").eq("role", "engineer"),
+      ]);
+      const allUserIds = [
+        ...(rolesRes.data || []).map(r => r.user_id),
+        ...(engRolesRes.data || []).map(r => r.user_id),
+      ];
+      if (allUserIds.length > 0) {
+        const { data: profs } = await supabase.from("profiles").select("user_id, first_name, last_name").in("user_id", allUserIds);
+        if (profs) {
+          const scaffolderUserIds = new Set((rolesRes.data || []).map(r => r.user_id));
+          const engineerUserIds = new Set((engRolesRes.data || []).map(r => r.user_id));
+          setScaffolders(profs.filter(p => scaffolderUserIds.has(p.user_id)));
+          setEngineers(profs.filter(p => engineerUserIds.has(p.user_id)));
+          const map: Record<string, Scaffolder> = {};
+          profs.forEach((p) => { map[p.user_id] = p; });
+          setProfiles(map);
+        }
       }
-    }
-    if (adminRolesRes.data) setAdminIds(adminRolesRes.data.map((r) => r.user_id));
+      if (adminRolesRes.data) setAdminIds(adminRolesRes.data.map((r) => r.user_id));
 
-    if (role === "admin") {
-      const { data: logs } = await supabase.from("audit_logs")
-        .select("*").eq("entity_id", id).order("created_at", { ascending: false }).limit(50);
-      if (logs) setAuditLog(logs as AuditEntry[]);
-    }
+      if (role === "admin") {
+        const { data: logs } = await supabase.from("audit_logs")
+          .select("*").eq("entity_id", id).order("created_at", { ascending: false }).limit(50);
+        if (logs) setAuditLog(logs as AuditEntry[]);
+      }
 
-    // Fetch site report status for engineer flow
-    if (role === "engineer" || role === "admin") {
-      const { data: report } = await (supabase as any)
-        .from("site_reports").select("id, status").eq("job_id", id).maybeSingle();
-      if (report) setSiteReport(report);
-    }
+      // Fetch site report status for engineer flow
+      if (role === "engineer" || role === "admin") {
+        const { data: report } = await (supabase as any)
+          .from("site_reports").select("id, status").eq("job_id", id).maybeSingle();
+        if (report) setSiteReport(report);
+      }
 
-    // Fetch safety checklist for engineer + admin
-    if ((role === "engineer" || role === "admin") && user?.id) {
-      const query = (supabase as any)
-        .from("safety_checklists")
-        .select("*")
-        .eq("job_id", id);
-      if (role === "engineer") query.eq("engineer_id", user.id);
-      const { data: checklist } = await query.maybeSingle();
-      if (checklist) setSafetyChecklistData(checklist);
+      // Fetch safety checklist for engineer + admin
+      if ((role === "engineer" || role === "admin") && user?.id) {
+        const query = (supabase as any)
+          .from("safety_checklists")
+          .select("*")
+          .eq("job_id", id);
+        if (role === "engineer") query.eq("engineer_id", user.id);
+        const { data: checklist } = await query.maybeSingle();
+        if (checklist) setSafetyChecklistData(checklist);
+      }
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }, [id, role]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -646,7 +648,7 @@ export default function JobDetail() {
       }
     }
 
-    const filename = `system-owner-${job.title.replace(/\s+/g, "_")}.pdf`;
+    const filename = `system-owner-${(job.title || "job").replace(/\s+/g, "_")}.pdf`;
     const blob = doc.output("blob");
     const file = new File([blob], filename, { type: "application/pdf" });
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
@@ -1201,7 +1203,7 @@ export default function JobDetail() {
                 </Select>
               ) : role !== "owner" ? (
                 <Badge variant={statusVariantOf(job.status) as any} className="whitespace-nowrap">
-                  {statusMap[job.status]}
+                  {statusMap[job.status] || job.status}
                 </Badge>
               ) : null}
               {canEdit && role !== "owner" && (
@@ -1412,7 +1414,7 @@ export default function JobDetail() {
           <CardContent className="space-y-4">
             {/* Progress */}
             {(() => {
-              const items = safetyChecklistData.items || [];
+              const items = Array.isArray(safetyChecklistData.items) ? safetyChecklistData.items : [];
               const done = items.filter((i: any) => i.checked).length;
               const total = items.length || 11;
               const pct = total > 0 ? Math.round((done / total) * 100) : 0;
@@ -1435,7 +1437,7 @@ export default function JobDetail() {
             })()}
             {/* Checklist items — sectioned */}
             {(() => {
-              const items = safetyChecklistData.items || [];
+              const items = Array.isArray(safetyChecklistData.items) ? safetyChecklistData.items : [];
               const checkedMap: Record<string, boolean> = {};
               items.forEach((i: any) => { checkedMap[i.id] = i.checked; });
 

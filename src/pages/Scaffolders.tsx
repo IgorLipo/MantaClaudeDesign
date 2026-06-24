@@ -61,48 +61,51 @@ export default function Scaffolders() {
   const loginUrl = `${window.location.origin}/login`;
 
   const fetchAll = async () => {
-    const [scaffRolesRes, engRolesRes, regionsRes, srRes, assignRes] = await Promise.all([
-      supabase.from("user_roles").select("user_id").eq("role", "scaffolder"),
-      supabase.from("user_roles").select("user_id").eq("role", "engineer"),
-      supabase.from("regions").select("id, name, code").order("name"),
-      supabase.from("scaffolder_regions").select("scaffolder_id, region_id"),
-      supabase.from("job_assignments").select("scaffolder_id, job_id"),
-    ]);
+    try {
+      const [scaffRolesRes, engRolesRes, regionsRes, srRes, assignRes] = await Promise.all([
+        supabase.from("user_roles").select("user_id").eq("role", "scaffolder"),
+        supabase.from("user_roles").select("user_id").eq("role", "engineer"),
+        supabase.from("regions").select("id, name, code").order("name"),
+        supabase.from("scaffolder_regions").select("scaffolder_id, region_id"),
+        supabase.from("job_assignments").select("scaffolder_id, job_id"),
+      ]);
 
-    const allIds = [
-      ...(scaffRolesRes.data || []).map((r) => r.user_id),
-      ...(engRolesRes.data || []).map((r) => r.user_id),
-    ];
+      const allIds = [
+        ...(scaffRolesRes.data || []).map((r) => r.user_id),
+        ...(engRolesRes.data || []).map((r) => r.user_id),
+      ];
 
-    if (allIds.length > 0) {
-      const { data: profiles } = await supabase.from("profiles").select("user_id, first_name, last_name, phone").in("user_id", allIds);
-      if (profiles) {
-        const scaffIds = new Set((scaffRolesRes.data || []).map((r) => r.user_id));
-        const engIds = new Set((engRolesRes.data || []).map((r) => r.user_id));
-        setScaffolders(profiles.filter((p) => scaffIds.has(p.user_id)));
-        setEngineers(profiles.filter((p) => engIds.has(p.user_id)));
+      if (allIds.length > 0) {
+        const { data: profiles } = await supabase.from("profiles").select("user_id, first_name, last_name, phone").in("user_id", allIds);
+        if (profiles) {
+          const scaffIds = new Set((scaffRolesRes.data || []).map((r) => r.user_id));
+          const engIds = new Set((engRolesRes.data || []).map((r) => r.user_id));
+          setScaffolders(profiles.filter((p) => scaffIds.has(p.user_id)));
+          setEngineers(profiles.filter((p) => engIds.has(p.user_id)));
+        }
       }
-    }
 
-    const counts: Record<string, number> = {};
-    if (assignRes.data) {
-      assignRes.data.forEach((a) => {
-        counts[a.scaffolder_id] = (counts[a.scaffolder_id] || 0) + 1;
-      });
-    }
-    setJobCounts(counts);
+      const counts: Record<string, number> = {};
+      if (assignRes.data) {
+        assignRes.data.forEach((a) => {
+          counts[a.scaffolder_id] = (counts[a.scaffolder_id] || 0) + 1;
+        });
+      }
+      setJobCounts(counts);
 
-    if (regionsRes.data) setRegions(regionsRes.data);
+      if (regionsRes.data) setRegions(regionsRes.data);
 
-    const map: Record<string, string[]> = {};
-    if (srRes.data) {
-      srRes.data.forEach((sr: any) => {
-        if (!map[sr.scaffolder_id]) map[sr.scaffolder_id] = [];
-        map[sr.scaffolder_id].push(sr.region_id);
-      });
+      const map: Record<string, string[]> = {};
+      if (srRes.data) {
+        srRes.data.forEach((sr: any) => {
+          if (!map[sr.scaffolder_id]) map[sr.scaffolder_id] = [];
+          map[sr.scaffolder_id].push(sr.region_id);
+        });
+      }
+      setScaffolderRegionMap(map);
+    } finally {
+      setLoading(false);
     }
-    setScaffolderRegionMap(map);
-    setLoading(false);
   };
 
   useEffect(() => { fetchAll(); }, []);

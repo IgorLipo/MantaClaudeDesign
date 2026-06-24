@@ -32,13 +32,16 @@ export default function NotificationsPage() {
 
   const fetchNotifications = async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-    if (data) setNotifications(data);
-    setLoading(false);
+    try {
+      const { data } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (data) setNotifications(data);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchNotifications(); }, [user]);

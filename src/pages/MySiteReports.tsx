@@ -21,13 +21,16 @@ export default function MySiteReports() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
-        .from("site_reports")
-        .select("*, jobs(id, title, address)")
-        .eq("engineer_id", user.id)
-        .order("created_at", { ascending: false });
-      if (data) setReports(data);
-      setLoading(false);
+      try {
+        const { data } = await supabase
+          .from("site_reports")
+          .select("*, jobs(id, title, address)")
+          .eq("engineer_id", user.id)
+          .order("created_at", { ascending: false });
+        if (data) setReports(data);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [user]);
 

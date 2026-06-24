@@ -23,13 +23,16 @@ export default function MyQuotes() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
-        .from("quotes")
-        .select("*, jobs(id, title, address, status)")
-        .eq("scaffolder_id", user.id)
-        .order("submitted_at", { ascending: false });
-      if (data) setQuotes(data);
-      setLoading(false);
+      try {
+        const { data } = await supabase
+          .from("quotes")
+          .select("*, jobs(id, title, address, status)")
+          .eq("scaffolder_id", user.id)
+          .order("submitted_at", { ascending: false });
+        if (data) setQuotes(data);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [user]);
 
@@ -67,7 +70,7 @@ export default function MyQuotes() {
                     <p className="text-sm font-medium text-foreground truncate">{q.jobs?.title || "Unknown Job"}</p>
                     <p className="text-xs text-muted-foreground truncate">{q.jobs?.address}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      £{Number(q.amount).toLocaleString()} · {new Date(q.submitted_at).toLocaleDateString()}
+                      £{Number(q.amount).toLocaleString()} · {q.submitted_at ? new Date(q.submitted_at).toLocaleDateString() : "—"}
                     </p>
                   </div>
                   <Badge variant="outline" className={cn("text-xs ml-3", decisionColor(q.review_decision))}>

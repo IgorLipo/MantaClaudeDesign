@@ -66,11 +66,14 @@ interface Props {
 
 export function JobSettingsPanel({ jobId, currentSettings, onUpdated }: Props) {
   const { toast } = useToast();
-  const [settings, setSettings] = useState<JobSettings>(() => ({
-    ...DEFAULTS,
-    ...currentSettings,
-    custom_checkpoints: (currentSettings as any)?.custom_checkpoints || [],
-  }));
+  const [settings, setSettings] = useState<JobSettings>(() => {
+    const raw = (currentSettings as any)?.custom_checkpoints;
+    return {
+      ...DEFAULTS,
+      ...currentSettings,
+      custom_checkpoints: Array.isArray(raw) ? raw : [],
+    };
+  });
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -79,7 +82,7 @@ export function JobSettingsPanel({ jobId, currentSettings, onUpdated }: Props) {
       setSettings((prev) => ({
         ...prev,
         ...currentSettings,
-        custom_checkpoints: (currentSettings as any)?.custom_checkpoints || prev.custom_checkpoints,
+        custom_checkpoints: Array.isArray((currentSettings as any)?.custom_checkpoints) ? (currentSettings as any).custom_checkpoints : prev.custom_checkpoints,
       }));
     }
   }, [currentSettings]);

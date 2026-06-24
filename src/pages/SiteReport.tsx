@@ -46,7 +46,8 @@ export default function SiteReport() {
   // Load existing report + job address
   useEffect(() => {
     const load = async () => {
-      if (!jobId) return;
+      if (!jobId) { setLoading(false); return; }
+      try {
 
       // Fetch job address + case_no + panel_count for prefill
       const { data: job } = await supabase.from("jobs").select("address, case_no, panel_count").eq("id", jobId).maybeSingle();
@@ -69,6 +70,7 @@ export default function SiteReport() {
           ...saved,
           case_no: saved.case_no || jobCaseNo,
           optimizer_no: saved.optimizer_no || report.optimizer_no || "",
+          materials: Array.isArray(saved.materials) ? saved.materials : emptyForm(jobAddress, jobCaseNo).materials,
           evidence_photos: Array.isArray(photos.evidence_photos) ? photos.evidence_photos : (saved.evidence_photos || []),
         });
       } else {
@@ -83,7 +85,11 @@ export default function SiteReport() {
           case_no: jobCaseNo || `MRE-${jobId?.slice(0, 6).toUpperCase()}`,
         });
       }
-      setLoading(false);
+      } catch (err) {
+        console.error("[SiteReport] load failed:", err);
+      } finally {
+        setLoading(false);
+      }
     };
     load();
   }, [jobId, user]);

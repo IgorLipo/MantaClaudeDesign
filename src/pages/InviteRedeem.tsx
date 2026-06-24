@@ -31,18 +31,27 @@ export default function InviteRedeem() {
 
   useEffect(() => {
     const fetch = async () => {
-      if (!token) return;
-      const { data: inv } = await (supabase as any)
-        .from("job_invites")
-        .select("*")
-        .eq("token", token)
-        .maybeSingle();
-      if (!inv) { setError("This invite link is invalid."); setChecking(false); return; }
-      if (new Date(inv.expires_at) < new Date()) { setError("This invite link has expired."); setChecking(false); return; }
-      setInvite(inv);
-      const { data: j } = await supabase.from("jobs").select("case_no, title, address").eq("id", inv.job_id).maybeSingle();
-      setJob(j);
-      setChecking(false);
+      if (!token) {
+        setError("This invite link is missing a token.");
+        setChecking(false);
+        return;
+      }
+      try {
+        const { data: inv } = await (supabase as any)
+          .from("job_invites")
+          .select("*")
+          .eq("token", token)
+          .maybeSingle();
+        if (!inv) { setError("This invite link is invalid."); setChecking(false); return; }
+        if (new Date(inv.expires_at) < new Date()) { setError("This invite link has expired."); setChecking(false); return; }
+        setInvite(inv);
+        const { data: j } = await supabase.from("jobs").select("case_no, title, address").eq("id", inv.job_id).maybeSingle();
+        setJob(j);
+      } catch {
+        setError("Could not validate this invite. Please try again.");
+      } finally {
+        setChecking(false);
+      }
     };
     fetch();
   }, [token]);

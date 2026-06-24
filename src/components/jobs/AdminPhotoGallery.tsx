@@ -46,7 +46,9 @@ export function AdminPhotoGallery({
 
   if (!open || photos.length === 0) return null;
 
-  const photo = photos[currentIndex];
+  const safeIndex = Math.min(currentIndex, photos.length - 1);
+  const photo = photos[safeIndex];
+  if (!photo) return null;
   const goNext = () =>
     setCurrentIndex((i) => Math.min(i + 1, photos.length - 1));
   const goPrev = () => setCurrentIndex((i) => Math.max(i - 1, 0));

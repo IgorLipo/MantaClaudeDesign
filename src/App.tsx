@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { AppShell } from "@/components/layout/AppShell";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Login from "./pages/Login";
 import Jobs from "./pages/Jobs";
 import JobDetail from "./pages/JobDetail";
@@ -58,6 +59,7 @@ function AppRoutes() {
 
   return (
     <AppShell>
+      <ErrorBoundary>
       <Routes>
         <Route path="/" element={<ProtectedRoute><OwnerRedirect /></ProtectedRoute>} />
         <Route path="/jobs" element={<Navigate to="/" replace />} />
@@ -78,6 +80,7 @@ function AppRoutes() {
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </ErrorBoundary>
     </AppShell>
   );
 }

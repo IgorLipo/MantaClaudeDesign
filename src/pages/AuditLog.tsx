@@ -21,31 +21,34 @@ export default function AuditLog() {
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
-    let query = supabase
-      .from("audit_logs")
-      .select("*", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+    try {
+      let query = supabase
+        .from("audit_logs")
+        .select("*", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
-    if (entityFilter !== "all") query = query.eq("entity", entityFilter);
-    if (search) query = query.or(`action.ilike.%${search}%,entity.ilike.%${search}%`);
+      if (entityFilter !== "all") query = query.eq("entity", entityFilter);
+      if (search) query = query.or(`action.ilike.%${search}%,entity.ilike.%${search}%`);
 
-    const { data, count } = await query;
-    if (data) {
-      setLogs(data);
-      // Fetch profile names for user_ids
-      const userIds = [...new Set(data.map((l) => l.user_id).filter(Boolean))];
-      if (userIds.length > 0) {
-        const { data: profs } = await supabase.from("profiles").select("user_id, first_name, last_name").in("user_id", userIds);
-        if (profs) {
-          const map: Record<string, string> = {};
-          profs.forEach((p) => { map[p.user_id] = `${p.first_name} ${p.last_name}`.trim(); });
-          setProfiles(map);
+      const { data, count } = await query;
+      if (data) {
+        setLogs(data);
+        // Fetch profile names for user_ids
+        const userIds = [...new Set(data.map((l) => l.user_id).filter(Boolean))];
+        if (userIds.length > 0) {
+          const { data: profs } = await supabase.from("profiles").select("user_id, first_name, last_name").in("user_id", userIds);
+          if (profs) {
+            const map: Record<string, string> = {};
+            profs.forEach((p) => { map[p.user_id] = `${p.first_name} ${p.last_name}`.trim(); });
+            setProfiles(map);
+          }
         }
       }
+      if (count !== null) setTotal(count);
+    } finally {
+      setLoading(false);
     }
-    if (count !== null) setTotal(count);
-    setLoading(false);
   }, [page, entityFilter, search]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
@@ -53,9 +56,10 @@ export default function AuditLog() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const actionColor = (action: string) => {
-    if (action.includes("create") || action.includes("insert")) return "text-success";
-    if (action.includes("update") || action.includes("change")) return "text-warning";
-    if (action.includes("delete") || action.includes("cancel")) return "text-destructive";
+    const a = action || "";
+    if (a.includes("create") || a.includes("insert")) return "text-success";
+    if (a.includes("update") || a.includes("change")) return "text-warning";
+    if (a.includes("delete") || a.includes("cancel")) return "text-destructive";
     return "text-info";
   };
 

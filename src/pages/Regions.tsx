@@ -36,47 +36,49 @@ export default function Regions() {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchAll = async () => {
-    const [regionsRes, srRes, assignRes] = await Promise.all([
-      supabase.from("regions").select("*").order("name"),
-      supabase.from("scaffolder_regions").select("scaffolder_id, region_id"),
-      supabase.from("job_assignments").select("job_id, region_id"),
-    ]);
+    try {
+      const [regionsRes, srRes, assignRes] = await Promise.all([
+        supabase.from("regions").select("*").order("name"),
+        supabase.from("scaffolder_regions").select("scaffolder_id, region_id"),
+        supabase.from("job_assignments").select("job_id, region_id"),
+      ]);
 
-    if (regionsRes.data) setRegions(regionsRes.data);
+      if (regionsRes.data) setRegions(regionsRes.data);
 
-    // Map scaffolders to regions via scaffolder_regions table
-    if (srRes.data) {
-      const scaffolderIds = [...new Set(srRes.data.map((sr: any) => sr.scaffolder_id))];
-      const { data: profiles } = scaffolderIds.length > 0
-        ? await supabase.from("profiles").select("user_id, first_name, last_name").in("user_id", scaffolderIds)
-        : { data: [] };
+      // Map scaffolders to regions via scaffolder_regions table
+      if (srRes.data) {
+        const scaffolderIds = [...new Set(srRes.data.map((sr: any) => sr.scaffolder_id))];
+        const { data: profiles } = scaffolderIds.length > 0
+          ? await supabase.from("profiles").select("user_id, first_name, last_name").in("user_id", scaffolderIds)
+          : { data: [] };
 
-      const regionScaffolders: Record<string, Scaffolder[]> = {};
-      srRes.data.forEach((sr: any) => {
-        if (!regionScaffolders[sr.region_id]) regionScaffolders[sr.region_id] = [];
-        const profile = profiles?.find((p) => p.user_id === sr.scaffolder_id);
-        if (profile && !regionScaffolders[sr.region_id].find((s) => s.user_id === profile.user_id)) {
-          regionScaffolders[sr.region_id].push(profile);
-        }
-      });
-      setScaffolders(regionScaffolders);
+        const regionScaffolders: Record<string, Scaffolder[]> = {};
+        srRes.data.forEach((sr: any) => {
+          if (!regionScaffolders[sr.region_id]) regionScaffolders[sr.region_id] = [];
+          const profile = profiles?.find((p) => p.user_id === sr.scaffolder_id);
+          if (profile && !regionScaffolders[sr.region_id].find((s) => s.user_id === profile.user_id)) {
+            regionScaffolders[sr.region_id].push(profile);
+          }
+        });
+        setScaffolders(regionScaffolders);
+      }
+
+      // Count jobs per region
+      const regionJobs: Record<string, Set<string>> = {};
+      if (assignRes.data) {
+        assignRes.data.forEach((a: any) => {
+          if (a.region_id) {
+            if (!regionJobs[a.region_id]) regionJobs[a.region_id] = new Set();
+            regionJobs[a.region_id].add(a.job_id);
+          }
+        });
+      }
+      const counts: Record<string, number> = {};
+      Object.entries(regionJobs).forEach(([id, set]) => { counts[id] = set.size; });
+      setJobCounts(counts);
+    } finally {
+      setLoading(false);
     }
-
-    // Count jobs per region
-    const regionJobs: Record<string, Set<string>> = {};
-    if (assignRes.data) {
-      assignRes.data.forEach((a: any) => {
-        if (a.region_id) {
-          if (!regionJobs[a.region_id]) regionJobs[a.region_id] = new Set();
-          regionJobs[a.region_id].add(a.job_id);
-        }
-      });
-    }
-    const counts: Record<string, number> = {};
-    Object.entries(regionJobs).forEach(([id, set]) => { counts[id] = set.size; });
-    setJobCounts(counts);
-
-    setLoading(false);
   };
 
   useEffect(() => { fetchAll(); }, []);

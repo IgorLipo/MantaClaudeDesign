@@ -81,35 +81,38 @@ export default function SafetyChecklistDialog({ open, onOpenChange, jobId, engin
     if (!open || !jobId) return;
     const load = async () => {
       setLoading(true);
-      const { data } = await (supabase as any)
-        .from("safety_checklists")
-        .select("*")
-        .eq("job_id", jobId)
-        .eq("engineer_id", engineerId)
-        .maybeSingle();
+      try {
+        const { data } = await (supabase as any)
+          .from("safety_checklists")
+          .select("*")
+          .eq("job_id", jobId)
+          .eq("engineer_id", engineerId)
+          .maybeSingle();
 
-      if (data) {
-        const saved: ChecklistStateItem[] = data.items || [];
-        const merged: Record<string, boolean> = {};
-        SAFETY_ITEMS.forEach((item) => {
-          const savedItem = saved.find((s) => s.id === item.id);
-          merged[item.id] = savedItem ? savedItem.checked : false;
-        });
-        setChecked(merged);
-        setNotes(data.notes || "");
-        if (data.building_photo_url) {
-          setBuildingPhotoUrl(data.building_photo_url);
-          setChecked((prev) => ({ ...prev, building_photo: true }));
+        if (data) {
+          const saved: ChecklistStateItem[] = Array.isArray(data.items) ? data.items : [];
+          const merged: Record<string, boolean> = {};
+          SAFETY_ITEMS.forEach((item) => {
+            const savedItem = saved.find((s) => s.id === item.id);
+            merged[item.id] = savedItem ? savedItem.checked : false;
+          });
+          setChecked(merged);
+          setNotes(data.notes || "");
+          if (data.building_photo_url) {
+            setBuildingPhotoUrl(data.building_photo_url);
+            setChecked((prev) => ({ ...prev, building_photo: true }));
+          }
+        } else {
+          const fresh: Record<string, boolean> = {};
+          SAFETY_ITEMS.forEach((item) => { fresh[item.id] = false; });
+          setChecked(fresh);
+          setNotes("");
+          setBuildingPhoto(null);
+          setBuildingPhotoUrl(null);
         }
-      } else {
-        const fresh: Record<string, boolean> = {};
-        SAFETY_ITEMS.forEach((item) => { fresh[item.id] = false; });
-        setChecked(fresh);
-        setNotes("");
-        setBuildingPhoto(null);
-        setBuildingPhotoUrl(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     load();
   }, [open, jobId, engineerId]);

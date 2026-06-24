@@ -11,16 +11,20 @@ export default function OwnerJobHome() {
   useEffect(() => {
     const check = async () => {
       if (!user) return;
-      const { data } = await supabase
-        .from("jobs")
-        .select("id")
-        .eq("owner_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (data) {
-        navigate(`/jobs/${data.id}`, { replace: true });
-      } else {
+      try {
+        const { data } = await supabase
+          .from("jobs")
+          .select("id")
+          .eq("owner_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (data) {
+          navigate(`/jobs/${data.id}`, { replace: true });
+        } else {
+          navigate("/new-job", { replace: true });
+        }
+      } catch {
         navigate("/new-job", { replace: true });
       }
       setChecked(true);
