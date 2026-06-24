@@ -58,15 +58,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     const forceDone = setTimeout(() => { if (!cancelled) setLoading(false); }, 5000);
 
+    // IMPORTANT: never `await` a Supabase DB call directly inside the
+    // onAuthStateChange callback — it deadlocks the client's auth lock and the
+    // query hangs forever (role never resolves). Defer it out of the callback.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         if (cancelled) return;
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          try { await fetchProfileAndRole(session.user.id); } catch (err) {
-            console.error("[Auth] Profile/role load failed on auth change:", err);
-          }
+          const uid = session.user.id;
+          setTimeout(() => {
+            if (!cancelled) fetchProfileAndRole(uid).catch((err) =>
+              console.error("[Auth] Profile/role load failed on auth change:", err));
+          }, 0);
         } else {
           setProfile(null);
           setRole(null);
@@ -75,14 +80,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (cancelled) return;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        try { await fetchProfileAndRole(session.user.id); } catch (err) {
-          console.error("[Auth] Profile/role load failed on init:", err);
-        }
+        fetchProfileAndRole(session.user.id).catch((err) =>
+          console.error("[Auth] Profile/role load failed on init:", err));
       }
       setLoading(false);
     }).catch((err) => {
