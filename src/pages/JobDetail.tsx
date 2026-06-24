@@ -67,6 +67,10 @@ const transitions: Record<string, string[]> = {
 
 // Owner-facing status messages
 const ownerStatusInfo: Record<string, { title: string; message: string }> = {
+  planning: {
+    title: "All set — thank you!",
+    message: "Thanks for setting up your account and sharing your details and photos. Our team will review everything and get back to you shortly.",
+  },
   submitted: {
     title: "Waiting for Approval",
     message: "We've sent your photos and location to Manta Ray Energy. We'll update you once the team has reviewed your submission.",

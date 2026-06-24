@@ -35,15 +35,63 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Admin only" }), { status: 403, headers: corsHeaders });
     }
 
-    const { email, password, first_name, last_name, role } = await req.json();
-    if (!email || !password || !role || !["scaffolder", "engineer"].includes(role)) {
-      return new Response(JSON.stringify({ error: "Invalid input. Need email, password, role (scaffolder|engineer)" }), { status: 400, headers: corsHeaders });
-    }
+    const body = await req.json();
+    const action = body.action || "create";
 
-    // Use service role to create user
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+
+    // --- Get email for an existing user ---
+    if (action === "get_email") {
+      const { user_id } = body;
+      if (!user_id) {
+        return new Response(JSON.stringify({ error: "Need user_id" }), { status: 400, headers: corsHeaders });
+      }
+      const { data, error } = await adminClient.auth.admin.getUserById(user_id);
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: corsHeaders });
+      }
+      return new Response(JSON.stringify({ success: true, email: data?.user?.email }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- Reset password for an existing user ---
+    if (action === "reset_password") {
+      const { user_id, password } = body;
+      if (!user_id || !password) {
+        return new Response(JSON.stringify({ error: "Need user_id and password" }), { status: 400, headers: corsHeaders });
+      }
+      const { error } = await adminClient.auth.admin.updateUserById(user_id, { password });
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: corsHeaders });
+      }
+      return new Response(JSON.stringify({ success: true, password }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- Update email for an existing user ---
+    if (action === "update_email") {
+      const { user_id, email } = body;
+      if (!user_id || !email) {
+        return new Response(JSON.stringify({ error: "Need user_id and email" }), { status: 400, headers: corsHeaders });
+      }
+      const { error } = await adminClient.auth.admin.updateUserById(user_id, { email, email_confirm: true });
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: corsHeaders });
+      }
+      return new Response(JSON.stringify({ success: true, email }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- Create a new team member (default action) ---
+    const { email, password, first_name, last_name, role } = body;
+    if (!email || !password || !role || !["scaffolder", "engineer"].includes(role)) {
+      return new Response(JSON.stringify({ error: "Invalid input. Need email, password, role (scaffolder|engineer)" }), { status: 400, headers: corsHeaders });
+    }
 
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
