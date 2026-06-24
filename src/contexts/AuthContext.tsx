@@ -45,7 +45,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (profileRes.error) console.error("[Auth] Profile fetch failed:", profileRes.error.message);
     if (roleRes.error) console.error("[Auth] Role fetch failed:", roleRes.error.message);
     if (profileRes.data) setProfile(profileRes.data as Profile);
-    if (roleRes.data) setRole(roleRes.data.role as AppRole);
+    if (roleRes.data) {
+      setRole(roleRes.data.role as AppRole);
+    } else if (!roleRes.error) {
+      // Valid session but no role row — a deleted/orphaned account. Don't leave
+      // the user stuck in a broken half-logged-in shell; force a clean sign-out
+      // so they land on the login screen.
+      console.warn("[Auth] Session has no role row — signing out stale session.");
+      await supabase.auth.signOut();
+      localStorage.clear();
+      sessionStorage.clear();
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      setRole(null);
+    }
   };
 
   const refreshRole = async () => {
