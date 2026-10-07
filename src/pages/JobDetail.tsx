@@ -1099,7 +1099,9 @@ export default function JobDetail() {
   const allScaffolders = scaffolders;
   const allEngineers = engineers;
   const showScheduling = ["scheduled", "in_progress", "quote_submitted", "negotiating"].includes(job.status) || job.scheduled_date;
-  const showSiteReport = ["in_progress", "completed"].includes(job.status);
+  // Engineer work runs in parallel with the owner/scaffolder pipeline: open as soon as an engineer is assigned
+  const engineerWorkOpen = hasEngineer && job.status !== "cancelled";
+  const showSiteReport = ["in_progress", "completed"].includes(job.status) || engineerWorkOpen;
   const canEdit = role === "admin" || (role === "owner" && job.owner_id === user?.id);
 
   const chatRecipients: Record<string, string[]> = {
@@ -1119,10 +1121,11 @@ export default function JobDetail() {
   const engineerBeforePhotos = photos.filter(p => engineerIds.has(p.uploader_id || "") && (p as any).photo_category === "before");
   const engineerAfterPhotos = photos.filter(p => engineerIds.has(p.uploader_id || "") && (p as any).photo_category === "after");
 
-  // Engineer status actions — show Start Working when scheduled, Mark as Finished when in_progress with submitted report
+  // Engineer status actions — Start Working (safety checklist) at any stage before work starts,
+  // Mark as Finished when in_progress with submitted report
   const engineerActions: { label: string; status: string }[] = [];
   if (role === "engineer") {
-    if (job.status === "scheduled") {
+    if (!["in_progress", "completed", "cancelled"].includes(job.status) && !safetyChecklistData?.completed) {
       engineerActions.push({ label: "Start Working", status: "in_progress" });
     }
     if (job.status === "in_progress" && siteReport?.status === "submitted") {
@@ -1376,7 +1379,7 @@ export default function JobDetail() {
                 </Button>
               ))}
               {/* Show safety checklist status when completed */}
-              {job.status === "in_progress" && safetyChecklistData && (
+              {safetyChecklistData?.completed && (
                 <div className="flex items-center gap-2 text-xs text-success">
                   <ShieldCheck className="h-3 w-3" />
                   <span>Safety checklist completed</span>
@@ -1743,7 +1746,7 @@ export default function JobDetail() {
       )}
 
       {/* Engineer Photos — Before/After Roof Work */}
-      {(role === "engineer" || role === "admin") && (job.status === "in_progress" || job.status === "completed") && (
+      {(role === "engineer" || role === "admin") && (job.status === "in_progress" || job.status === "completed" || engineerWorkOpen) && (
         <Card className="card-elevated">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -2092,8 +2095,9 @@ export default function JobDetail() {
           onComplete={() => {
             setSafetyChecklistOpen(false);
             fetchAll();
-            // Now actually update the job status to in_progress
-            updateStatus("in_progress");
+            // Only advance the job when the scaffolder pipeline is already at "scheduled";
+            // earlier stages keep their status so owner onboarding and scaffolder quoting are untouched
+            if (job.status === "scheduled") updateStatus("in_progress");
           }}
         />
       )}
