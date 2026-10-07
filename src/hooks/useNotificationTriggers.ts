@@ -13,55 +13,11 @@ export async function notify({ userId, type, title, message, data }: NotifyParam
   await supabase.from("notifications").insert({
     user_id: userId, type, title, message, data: data || {},
   });
-  // Fire-and-forget email for every in-app notification
-  const jobId = data?.job_id as string | undefined;
-  sendEmail(title, emailHtml(title, message, jobId));
 }
 
 async function getAdminIds(): Promise<string[]> {
   const { data } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
   return data ? data.map((r) => r.user_id) : [];
-}
-
-async function getAdminEmails(): Promise<string[]> {
-  const adminIds = await getAdminIds();
-  if (adminIds.length === 0) return [];
-  const { data } = await supabase.from("profiles").select("user_id")
-    .in("user_id", adminIds);
-  // get emails from auth.users via admin API isn't available client-side
-  // Use the email from the admin user (hardcoded for now since single admin)
-  // In production, store admin notification email in admin_settings
-  const { data: settings } = await supabase.from("admin_settings").select("notification_email").eq("id", 1).single();
-  if (settings?.notification_email) return [settings.notification_email];
-  // Fallback: use known admin email
-  return ["admin@mantaray.energy"];
-}
-
-async function sendEmail(subject: string, html: string) {
-  try {
-    const emails = await getAdminEmails();
-    for (const to of emails) {
-      await supabase.functions.invoke("send-notification-email", {
-        body: { to, subject, html },
-      });
-    }
-  } catch (e) {
-    console.warn("[Email] Failed to send notification email:", e);
-  }
-}
-
-function emailHtml(title: string, message: string, jobId?: string): string {
-  const link = jobId ? `https://manta-claude-design.vercel.app/jobs/${jobId}` : "https://manta-claude-design.vercel.app";
-  return `
-    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px">
-      <h2 style="color:#F97316">Manta Ray Energy</h2>
-      <h3>${title}</h3>
-      <p>${message}</p>
-      ${jobId ? `<p><a href="${link}" style="color:#F97316">View job details →</a></p>` : ""}
-      <hr style="border:1px solid #eee;margin:20px 0" />
-      <p style="color:#888;font-size:12px">Sent from Manta Ray Energy platform. <a href="${link}">Open dashboard</a>.</p>
-    </div>
-  `;
 }
 
 export async function notifyStatusChange(
