@@ -179,11 +179,20 @@ export async function generateSiteReportPdf(
   const MAX_IMG_H = 110;
   const drawPhotoGrid = async (title: string, urls: string[]) => {
     if (urls.length === 0) return;
+    const imgs = await Promise.all(urls.map(loadImage));
+    const size = (img: (typeof imgs)[number]) => {
+      let w = COL_W;
+      let h = img ? (w * img.height) / img.width : 8;
+      if (img && h > MAX_IMG_H) { h = MAX_IMG_H; w = (h * img.width) / img.height; }
+      return { w, h };
+    };
+    // Keep the section title on the same page as its first row of photos
+    const firstRowH = Math.max(...imgs.slice(0, 2).map((i) => size(i).h));
+    checkPage(14 + firstRowH + 4);
     drawSectionHeader(title);
     let col = 0;
     let rowH = 0;
-    for (const url of urls) {
-      const img = await loadImage(url);
+    for (const img of imgs) {
       let w = COL_W;
       let h = img ? (w * img.height) / img.width : 8;
       if (img && h > MAX_IMG_H) { h = MAX_IMG_H; w = (h * img.width) / img.height; }
