@@ -184,7 +184,7 @@ export async function generateSiteReportPdf(
   const GAP = 5;
   const CARD_W = (CW - GAP * (COLS - 1)) / COLS;
   const IMG_H = 78;
-  const CAP_H = 11;
+  const CAP_H = 15.5;
   let photosStarted = false;
   const drawPhotoSection = async (title: string, urls: string[]) => {
     if (!urls.length) return;
@@ -211,10 +211,23 @@ export async function generateSiteReportPdf(
       }
       pdf.setFillColor(...ORANGE);
       pdf.rect(x, y + IMG_H, CARD_W, 0.5, "F");
-      font(7.5, "bold", INK);
-      pdf.text(title, x + 3, y + IMG_H + 4.6);
-      font(7, "normal", BODY);
-      pdf.text(`Photo ${i + 1} of ${imgs.length}`, x + 3, y + IMG_H + 8.6);
+      const mat = img ? matchMaterial(img.codes, mats) : null;
+      if (mat) {
+        // Serial label recognised on the photo: caption it with that material's serials
+        font(7.5, "bold", INK);
+        pdf.text((pdf.splitTextToSize(mat.description.trim(), CARD_W - 6) as string[])[0], x + 3, y + IMG_H + 4.6);
+        font(6.8, "normal", MUTED);
+        pdf.text("Old Serial:", x + 3, y + IMG_H + 8.8);
+        pdf.text("New Serial:", x + 3, y + IMG_H + 12.6);
+        font(6.8, "normal", INK, "courier");
+        pdf.text(mat.serial_old || "-", x + 17, y + IMG_H + 8.8);
+        pdf.text(mat.serial_new || "-", x + 17, y + IMG_H + 12.6);
+      } else {
+        font(7.5, "bold", INK);
+        pdf.text(title, x + 3, y + IMG_H + 4.6);
+        font(7, "normal", BODY);
+        pdf.text(`Photo ${i + 1} of ${imgs.length}`, x + 3, y + IMG_H + 8.6);
+      }
       pdf.setDrawColor(...RULE);
       pdf.setLineWidth(0.25);
       pdf.roundedRect(x, y, CARD_W, IMG_H + CAP_H, 1.6, 1.6, "S");
@@ -250,10 +263,14 @@ export async function generateSiteReportPdf(
 
 /** Loads an image, applies EXIF orientation and downsizes it so the PDF stays small. */
 /** With `cropRatio` (width / height) the photo is centre-cropped to fill that frame, never stretched. */
-async function loadImage(url: string, cropRatio?: number): Promise<{ dataUrl: string; width: number; height: number } | null> {
+async function loadImage(
+  url: string,
+  cropRatio?: number
+): Promise<{ dataUrl: string; width: number; height: number; codes: string[] } | null> {
   try {
     const blob = await (await fetch(url)).blob();
     const bmp = await createImageBitmap(blob, { imageOrientation: "from-image" });
+    const codes = await readCodes(bmp);
     let sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;
     if (cropRatio) {
       if (sw / sh > cropRatio) { sw = sh * cropRatio; sx = (bmp.width - sw) / 2; }
@@ -268,10 +285,45 @@ async function loadImage(url: string, cropRatio?: number): Promise<{ dataUrl: st
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
     bmp.close();
-    return { dataUrl: canvas.toDataURL("image/jpeg", 0.82), width: canvas.width, height: canvas.height };
+    return { dataUrl: canvas.toDataURL("image/jpeg", 0.82), width: canvas.width, height: canvas.height, codes };
   } catch {
     return null;
   }
+}
+
+/** Reads QR / barcodes on the photo (SolarEdge labels encode the serial). Works on iPhone Safari too. */
+async function readCodes(bmp: ImageBitmap): Promise<string[]> {
+  try {
+    const { BarcodeDetector } = await import("barcode-detector/ponyfill");
+    const det = new BarcodeDetector({ formats: ["qr_code", "data_matrix", "code_128"] });
+    const found = new Set((await det.detect(bmp)).map((c) => c.rawValue));
+    // Very large photos can hide small labels from the decoder; retry on smaller copies
+    for (const max of [1600, 1000]) {
+      if (Math.max(bmp.width, bmp.height) <= max) continue;
+      const k = max / Math.max(bmp.width, bmp.height);
+      const c = document.createElement("canvas");
+      c.width = Math.round(bmp.width * k);
+      c.height = Math.round(bmp.height * k);
+      c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
+      for (const r of await det.detect(c)) found.add(r.rawValue);
+    }
+    return [...found];
+  } catch {
+    return [];
+  }
+}
+
+const norm = (v: string) => v.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+/** Finds the materials row whose old or new serial appears in a code read from the photo. */
+function matchMaterial<T extends { serial_old: string; serial_new: string }>(codes: string[], mats: T[]): T | null {
+  const read = codes.map(norm);
+  for (const m of mats) {
+    for (const serial of [m.serial_old, m.serial_new].map((x) => norm(x || ""))) {
+      if (serial.length >= 6 && read.some((c) => c.includes(serial))) return m;
+    }
+  }
+  return null;
 }
 
 /** Every photo uploaded to the job, grouped the same way the job page shows them. */
