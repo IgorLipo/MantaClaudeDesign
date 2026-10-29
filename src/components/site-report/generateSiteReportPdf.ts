@@ -1,13 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ReportFormData } from "./SiteReportForm";
+import { REPORT_LOGO_PNG, REPORT_LOGO_RATIO } from "./reportLogo";
 
 type RGB = readonly [number, number, number];
 
 /**
- * Site Visit Report PDF (A4, jsPDF, vector text).
- * Layout: dark cover band, key-facts strip, numbered sections with hairline rules,
- * a clean materials table, then photo pages in a two-column grid that keeps each
- * photo's real proportions. Every page gets a running header and "Page x of y" footer.
+ * Site Visit Report PDF (A4, jsPDF). Matches the approved Manta-Ray Energy design:
+ * logo header with orange rule, Job / Case / Date cards, orange-bar section titles,
+ * two-column details table, navy materials table, photo cards, and a contact footer
+ * with "Job: x | Page n of m" on every page.
  */
 export async function generateSiteReportPdf(
   data: ReportFormData,
@@ -19,262 +20,211 @@ export async function generateSiteReportPdf(
   const pdf = new jsPDF("p", "mm", "a4");
   const W = pdf.internal.pageSize.getWidth();
   const H = pdf.internal.pageSize.getHeight();
-  const M = 18; // side margins
+  const M = 16;
   const CW = W - M * 2;
-  const TOP = 24; // content start on continuation pages
-  const BOTTOM = H - 18; // content limit above footer
+  const TOP = 16;
+  const BOTTOM = H - 24; // footer starts below this
   let y = 0;
 
-  const INK: RGB = [24, 24, 27];
-  const BODY: RGB = [55, 55, 60];
-  const MUTED: RGB = [120, 120, 128];
-  const RULE: RGB = [226, 226, 230];
-  const PANEL: RGB = [246, 246, 248];
-  const BRAND: RGB = [249, 115, 22]; // #F97316
-  const DARK: RGB = [24, 24, 27];
+  const NAVY: RGB = [30, 36, 51];
+  const ORANGE: RGB = [249, 115, 22];
+  const INK: RGB = [17, 24, 39];
+  const BODY: RGB = [55, 65, 81];
+  const MUTED: RGB = [107, 114, 128];
+  const RULE: RGB = [229, 231, 235];
+  const PANEL: RGB = [244, 245, 247];
 
-  const caseNo = data.case_no || jobId.slice(0, 8).toUpperCase();
-  const visitDate = data.date_of_visit
-    ? new Date(data.date_of_visit + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
-    : "";
+  const jobNo = jobId.slice(0, 8);
+  const fmtDate = (d: string) => (d ? new Date(d + "T00:00:00").toLocaleDateString("en-GB") : "");
+  const visitDate = fmtDate(data.date_of_visit);
 
-  const font = (size: number, style: "normal" | "bold" = "normal", color: RGB = BODY) => {
-    pdf.setFont("helvetica", style);
+  const font = (size: number, style: "normal" | "bold" = "normal", color: RGB = BODY, family = "helvetica") => {
+    pdf.setFont(family, style);
     pdf.setFontSize(size);
     pdf.setTextColor(...color);
   };
 
-  const newPage = () => {
-    pdf.addPage();
-    // Running header on continuation pages
-    font(8, "bold", INK);
-    pdf.text("MANTA RAY ENERGY", M, 12);
-    font(8, "normal", MUTED);
-    pdf.text(`Site Visit Report  ·  Case ${caseNo}`, W - M, 12, { align: "right" });
-    pdf.setDrawColor(...BRAND);
-    pdf.setLineWidth(0.6);
-    pdf.line(M, 15, M + 12, 15);
-    pdf.setDrawColor(...RULE);
-    pdf.setLineWidth(0.2);
-    pdf.line(M + 12, 15, W - M, 15);
-    y = TOP;
-  };
-
   const ensure = (need: number) => {
-    if (y + need > BOTTOM) newPage();
-  };
-
-  let sectionNo = 0;
-  const section = (title: string, keepWith = 12) => {
-    ensure(14 + keepWith);
-    sectionNo += 1;
-    y += 4;
-    font(9, "bold", BRAND);
-    pdf.text(String(sectionNo).padStart(2, "0"), M, y);
-    font(11, "bold", INK);
-    pdf.text(title.toUpperCase(), M + 9, y, { charSpace: 0.3 });
-    pdf.setDrawColor(...RULE);
-    pdf.setLineWidth(0.2);
-    pdf.line(M, y + 3, W - M, y + 3);
-    y += 9;
-  };
-
-  const paragraph = (text: string, color: RGB = BODY, size = 10, indent = 0) => {
-    font(size, "normal", color);
-    const lines: string[] = pdf.splitTextToSize(text, CW - indent);
-    const lh = size * 0.45;
-    for (const line of lines) {
-      ensure(lh + 1);
-      pdf.text(line, M + indent, y + lh * 0.8);
-      y += lh;
+    if (y + need > BOTTOM) {
+      pdf.addPage();
+      y = TOP;
     }
-    y += 3;
   };
 
-  /* ── Cover band ── */
-  pdf.setFillColor(...DARK);
-  pdf.rect(0, 0, W, 46, "F");
-  pdf.setFillColor(...BRAND);
-  pdf.rect(0, 46, W, 1.6, "F");
-  font(9, "bold", BRAND);
-  pdf.text("MANTA RAY ENERGY", M, 15, { charSpace: 0.8 });
-  font(24, "bold", [255, 255, 255]);
-  pdf.text("Site Visit Report", M, 29);
-  font(10, "normal", [190, 190, 196]);
-  pdf.text(data.address || "", M, 37, { maxWidth: CW - 55 });
-  font(8, "normal", [160, 160, 168]);
-  pdf.text("CASE NO.", W - M, 15, { align: "right", charSpace: 0.5 });
-  font(20, "bold", [255, 255, 255]);
-  pdf.text(caseNo, W - M, 25, { align: "right" });
-  font(8, "normal", [160, 160, 168]);
-  pdf.text(`Issued ${new Date().toLocaleDateString("en-GB")}`, W - M, 37, { align: "right" });
-  y = 56;
+  const section = (title: string, keepWith = 10) => {
+    ensure(12 + keepWith);
+    y += 7;
+    pdf.setFillColor(...ORANGE);
+    pdf.rect(M, y - 3.6, 1, 4.4, "F");
+    font(9.5, "bold", ORANGE);
+    pdf.text(title.toUpperCase(), M + 4, y, { charSpace: 0.35 });
+    y += 6;
+  };
 
-  /* ── Key facts strip ── */
-  const facts: [string, string][] = [
+  const paragraph = (text: string) => {
+    font(9, "normal", BODY);
+    const lines: string[] = pdf.splitTextToSize(text, CW);
+    for (const line of lines) {
+      ensure(5);
+      pdf.text(line, M, y + 3);
+      y += 4.4;
+    }
+    y += 1;
+  };
+
+  /* ── Header ── */
+  const logoW = 52;
+  pdf.addImage(REPORT_LOGO_PNG, "PNG", M, 12, logoW, logoW * REPORT_LOGO_RATIO);
+  font(20, "bold", INK);
+  pdf.text("Site Visit Report", W - M, 24, { align: "right" });
+  font(8, "normal", MUTED);
+  pdf.text(`Generated: ${new Date().toLocaleDateString("en-GB")}`, W - M, 30, { align: "right" });
+  pdf.setDrawColor(...ORANGE);
+  pdf.setLineWidth(0.7);
+  pdf.line(M, 37, W - M, 37);
+  y = 45;
+
+  /* ── Job / Case / Date cards ── */
+  const cards: [string, string][] = [
+    ["JOB NO.", jobNo],
+    ["CASE NO.", data.case_no || "-"],
     ["DATE OF VISIT", visitDate || "-"],
-    ["ENGINEER", data.engineer_name || "-"],
-    ["PURPOSE", data.purpose_of_visit || "-"],
-    ...(extras.panelCount != null ? [["PANELS", String(extras.panelCount)] as [string, string]] : []),
   ];
-  const gap = 3;
-  const fw = (CW - gap * (facts.length - 1)) / facts.length;
-  facts.forEach(([label, value], i) => {
-    const x = M + i * (fw + gap);
+  const cg = 4;
+  const cw = (CW - cg * 2) / 3;
+  cards.forEach(([label, value], i) => {
+    const x = M + i * (cw + cg);
     pdf.setFillColor(...PANEL);
-    pdf.roundedRect(x, y, fw, 17, 1.5, 1.5, "F");
-    font(6.5, "bold", MUTED);
-    pdf.text(label, x + 4, y + 6, { charSpace: 0.4 });
-    font(9.5, "bold", INK);
-    const wraps = pdf.splitTextToSize(value, fw - 8).length > 1;
-    if (wraps) font(8, "bold", INK);
-    pdf.text(pdf.splitTextToSize(value, fw - 8).slice(0, 2), x + 4, wraps ? y + 10.5 : y + 12.5);
+    pdf.rect(x, y, cw, 13.5, "F");
+    pdf.setFillColor(...ORANGE);
+    pdf.rect(x, y, 0.8, 13.5, "F");
+    font(6, "normal", MUTED);
+    pdf.text(label, x + 4.5, y + 4.8, { charSpace: 0.3 });
+    font(9, "bold", INK);
+    pdf.text(value, x + 4.5, y + 9.8);
   });
-  y += 24;
+  y += 13.5 + 4;
 
-  /* ── 01 Site & attendees ── */
-  const details: [string, string][] = [
+  /* ── General details (two label/value pairs per row) ── */
+  const details: [string, string][] = ([
+    ["Engineer Name", data.engineer_name],
+    ["Date of Visit", visitDate],
     ["Address", data.address],
+    ["Case No.", data.case_no],
     ["Site ID", data.site_id],
     ["Optimizer No.", data.optimizer_no],
+    ["Panel Count", extras.panelCount != null ? String(extras.panelCount) : ""],
     ["FSEs / Attendees", data.fse_attendees],
-    ["Installer", data.installer_details],
-    ["End customer", data.end_customer_details],
-    ["Other parties", data.other_parties],
-  ].filter(([, v]) => !!v) as [string, string][];
+    ["Installer Details", data.installer_details],
+    ["End-Customer", data.end_customer_details],
+    ["Other Parties", data.other_parties],
+  ] as [string, string][]).filter(([, v]) => !!v);
   if (details.length) {
-    section("Site details");
-    for (const [label, value] of details) {
-      font(9.5, "normal", BODY);
-      const lines: string[] = pdf.splitTextToSize(value, CW - 48);
-      const rh = Math.max(7.5, lines.length * 4.6 + 3);
+    section("General Details");
+    const half = CW / 2;
+    const valW = half - 38;
+    for (let i = 0; i < details.length; i += 2) {
+      const pair = details.slice(i, i + 2);
+      font(8, "bold", INK);
+      const wrapped = pair.map(([, v]) => pdf.splitTextToSize(v, valW) as string[]);
+      const rh = Math.max(...wrapped.map((l) => l.length)) * 3.6 + 4.4;
       ensure(rh);
-      font(8, "bold", MUTED);
-      pdf.text(label.toUpperCase(), M, y + 5, { charSpace: 0.3 });
-      font(9.5, "normal", INK);
-      pdf.text(lines, M + 48, y + 5);
+      pair.forEach(([label], j) => {
+        const x = M + j * half;
+        font(8, "normal", MUTED);
+        pdf.text(label, x, y + 4);
+        font(8, "bold", INK);
+        pdf.text(wrapped[j], x + 37, y + 4);
+      });
       y += rh;
       pdf.setDrawColor(...RULE);
+      pdf.setLineWidth(0.2);
       pdf.line(M, y, W - M, y);
     }
-    y += 4;
+    y += 2;
   }
 
-  /* ── Work summary ── */
-  if (data.summary) {
-    section("Work carried out");
-    paragraph(data.summary, INK, 10.5);
-  }
+  if (data.purpose_of_visit) { section("Purpose of Visit"); paragraph(data.purpose_of_visit); }
+  if (data.summary) { section("Summary"); paragraph(data.summary); }
 
   /* ── Materials ── */
   const mats = data.materials.filter((m) => m.description);
   if (mats.length) {
-    section("Materials supplied", 20);
-    const cols = [
-      { t: "DESCRIPTION", x: M + 4 },
-      { t: "QTY", x: M + 74 },
-      { t: "OLD SERIAL", x: M + 90 },
-      { t: "NEW SERIAL", x: M + 132 },
-    ];
-    pdf.setFillColor(...DARK);
-    pdf.rect(M, y, CW, 8, "F");
-    font(7.5, "bold", [255, 255, 255]);
-    cols.forEach((c) => pdf.text(c.t, c.x, y + 5.3, { charSpace: 0.3 }));
-    y += 8;
+    section("Supplied Materials Used", 18);
+    const cols = [M + 3, M + 64, M + 82, M + 132];
+    pdf.setFillColor(...NAVY);
+    pdf.rect(M, y, CW, 9, "F");
+    font(6.8, "bold", [255, 255, 255]);
+    ["DESCRIPTION", "QTY", "OLD SERIAL", "NEW SERIAL"].forEach((t, i) => pdf.text(t, cols[i], y + 5.7, { charSpace: 0.3 }));
+    y += 9;
     mats.forEach((m, i) => {
-      ensure(8);
+      ensure(9.5);
       if (i % 2 === 1) {
         pdf.setFillColor(...PANEL);
-        pdf.rect(M, y, CW, 8, "F");
+        pdf.rect(M, y, CW, 9.5, "F");
       }
-      font(9, "normal", INK);
-      pdf.text(pdf.splitTextToSize(m.description, 66)[0], cols[0].x, y + 5.3);
-      pdf.text(m.quantity || "1", cols[1].x, y + 5.3);
-      pdf.setFont("courier", "normal");
-      pdf.text(m.serial_old || "-", cols[2].x, y + 5.3);
-      pdf.text(m.serial_new || "-", cols[3].x, y + 5.3);
-      y += 8;
+      font(8, "normal", INK);
+      pdf.text((pdf.splitTextToSize(m.description, 58) as string[])[0], cols[0], y + 6);
+      pdf.text(m.quantity || "1", cols[1], y + 6);
+      font(7.8, "normal", INK, "courier");
+      pdf.text(m.serial_old || "-", cols[2], y + 6);
+      pdf.text(m.serial_new || "-", cols[3], y + 6);
+      y += 9.5;
+      pdf.setDrawColor(...RULE);
+      pdf.line(M, y, W - M, y);
     });
-    pdf.setDrawColor(...RULE);
-    pdf.line(M, y, W - M, y);
-    y += 6;
+    y += 2;
   }
 
-  /* ── Comments ── */
-  if (data.engineer_comments) {
-    section("Engineer comments");
-    paragraph(data.engineer_comments, INK);
-  }
+  if (data.engineer_comments) { section("Comments from Engineers / Attendees"); paragraph(data.engineer_comments); }
+  if (data.follow_up_action) { section("Follow-Up Action"); paragraph(data.follow_up_action); }
 
-  /* ── Follow-up (highlighted callout) ── */
-  if (data.follow_up_action) {
-    section("Follow-up action", 20);
-    font(10, "normal", INK);
-    const lines: string[] = pdf.splitTextToSize(data.follow_up_action, CW - 12);
-    const bh = lines.length * 4.6 + 8;
-    ensure(bh);
-    pdf.setFillColor(255, 244, 235);
-    pdf.rect(M, y, CW, bh, "F");
-    pdf.setFillColor(...BRAND);
-    pdf.rect(M, y, 1.4, bh, "F");
-    pdf.text(lines, M + 7, y + 6.5);
-    y += bh + 6;
-  }
-
-  /* ── Photos ── */
-  // Two-column grid; each image keeps its real aspect ratio (no stretching).
-  const GAP = 6;
-  const COL_W = (CW - GAP) / 2;
-  const MAX_IMG_H = 105;
+  /* ── Photos: rounded cards, 3 per row, image fills the card without stretching ── */
+  const COLS = 3;
+  const GAP = 5;
+  const CARD_W = (CW - GAP * (COLS - 1)) / COLS;
+  const IMG_H = 78;
+  const CAP_H = 11;
   let photosStarted = false;
-  const drawPhotoGrid = async (title: string, urls: string[]) => {
-    if (urls.length === 0) return;
-    const imgs = await Promise.all(urls.map(loadImage));
-    const size = (img: (typeof imgs)[number]) => {
-      let w = COL_W;
-      let h = img ? (w * img.height) / img.width : 20;
-      if (img && h > MAX_IMG_H) { h = MAX_IMG_H; w = (h * img.width) / img.height; }
-      return { w, h };
-    };
-    if (!photosStarted) { newPage(); photosStarted = true; }
-    // Keep the section title on the same page as its first row of photos
-    const firstRowH = Math.max(...imgs.slice(0, 2).map((i) => size(i).h));
-    section(`${title}  (${imgs.length})`, firstRowH + 8);
-    let col = 0;
-    let rowH = 0;
+  const drawPhotoSection = async (title: string, urls: string[]) => {
+    if (!urls.length) return;
+    const imgs = await Promise.all(urls.map((u) => loadImage(u, CARD_W / IMG_H)));
+    if (!photosStarted) { pdf.addPage(); y = TOP - 7; photosStarted = true; }
+    section(title, IMG_H + CAP_H);
     for (let i = 0; i < imgs.length; i++) {
-      const img = imgs[i];
-      const { w, h } = size(img);
-      if (col === 0) {
-        const pairH = Math.max(h, i + 1 < imgs.length ? size(imgs[i + 1]).h : 0);
-        ensure(pairH + 8);
+      const col = i % COLS;
+      if (col === 0 && i > 0) y += IMG_H + CAP_H + GAP;
+      if (col === 0 && y + IMG_H + CAP_H > BOTTOM) {
+        pdf.addPage();
+        y = TOP - 7;
+        section(`${title} (continued)`, IMG_H + CAP_H);
       }
-      const cellX = M + col * (COL_W + GAP);
-      // Neutral cell so mixed portrait/landscape rows line up neatly
+      const x = M + col * (CARD_W + GAP);
+      const img = imgs[i];
       if (img) {
-        const x = cellX + (COL_W - w) / 2;
-        pdf.addImage(img.dataUrl, "JPEG", x, y, w, h);
-        pdf.setDrawColor(...RULE);
-        pdf.setLineWidth(0.2);
-        pdf.rect(x, y, w, h);
+        pdf.addImage(img.dataUrl, "JPEG", x, y, CARD_W, IMG_H);
       } else {
         pdf.setFillColor(...PANEL);
-        pdf.rect(cellX, y, COL_W, h, "F");
-        font(8, "normal", MUTED);
-        pdf.text("Image could not be loaded", cellX + COL_W / 2, y + h / 2 + 1, { align: "center" });
+        pdf.rect(x, y, CARD_W, IMG_H, "F");
+        font(7.5, "normal", MUTED);
+        pdf.text("Image could not be loaded", x + CARD_W / 2, y + IMG_H / 2, { align: "center" });
       }
-      font(7.5, "normal", MUTED);
-      pdf.text(`${title} · ${i + 1} of ${imgs.length}`, cellX + COL_W / 2, y + h + 4, { align: "center" });
-      rowH = Math.max(rowH, h);
-      col = (col + 1) % 2;
-      if (col === 0) { y += rowH + 10; rowH = 0; }
+      pdf.setFillColor(...ORANGE);
+      pdf.rect(x, y + IMG_H, CARD_W, 0.5, "F");
+      font(7.5, "bold", INK);
+      pdf.text(title, x + 3, y + IMG_H + 4.6);
+      font(7, "normal", BODY);
+      pdf.text(`Photo ${i + 1} of ${imgs.length}`, x + 3, y + IMG_H + 8.6);
+      pdf.setDrawColor(...RULE);
+      pdf.setLineWidth(0.25);
+      pdf.roundedRect(x, y, CARD_W, IMG_H + CAP_H, 1.6, 1.6, "S");
     }
-    if (col === 1) y += rowH + 10;
+    y += IMG_H + CAP_H + GAP;
   };
 
-  await drawPhotoGrid("System performance", data.evidence_photos || []);
+  await drawPhotoSection("Evidence of System Performance", data.evidence_photos || []);
   const groups = await fetchJobPhotoGroups(jobId);
-  for (const g of groups) await drawPhotoGrid(g.title, g.urls);
+  for (const g of groups) await drawPhotoSection(g.title, g.urls);
 
   /* ── Footer on every page ── */
   const pages = pdf.getNumberOfPages();
@@ -282,28 +232,41 @@ export async function generateSiteReportPdf(
     pdf.setPage(p);
     pdf.setDrawColor(...RULE);
     pdf.setLineWidth(0.2);
-    pdf.line(M, H - 12, W - M, H - 12);
-    font(7.5, "normal", MUTED);
-    pdf.text("Manta Ray Energy  ·  Confidential", M, H - 7);
-    pdf.text(`Page ${p} of ${pages}`, W - M, H - 7, { align: "right" });
+    pdf.line(M, H - 18.5, W - M, H - 18.5);
+    font(6.6, "bold", INK);
+    pdf.text("Manta-Ray Energy", M + 3, H - 13.5);
+    font(6.6, "normal", BODY);
+    pdf.text("Office: 3 Hoop Lane, NW11 8JR", M + 32, H - 13.5);
+    pdf.text("Tel: 020 7205 7355", M + 78, H - 13.5);
+    pdf.text("info@manta-ray-energy.com", M + 107, H - 13.5);
+    pdf.text("manta-ray-energy.com", W - M - 3, H - 13.5, { align: "right" });
+    font(6, "normal", [156, 163, 175]);
+    pdf.text("Manta Ray Energy — Confidential", M, H - 9.3);
+    pdf.text(`Job: ${jobNo}  |  Page ${p} of ${pages}`, W - M, H - 9.3, { align: "right" });
   }
 
   return pdf.output("blob");
 }
 
 /** Loads an image, applies EXIF orientation and downsizes it so the PDF stays small. */
-async function loadImage(url: string): Promise<{ dataUrl: string; width: number; height: number } | null> {
+/** With `cropRatio` (width / height) the photo is centre-cropped to fill that frame, never stretched. */
+async function loadImage(url: string, cropRatio?: number): Promise<{ dataUrl: string; width: number; height: number } | null> {
   try {
     const blob = await (await fetch(url)).blob();
     const bmp = await createImageBitmap(blob, { imageOrientation: "from-image" });
-    const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    let sx = 0, sy = 0, sw = bmp.width, sh = bmp.height;
+    if (cropRatio) {
+      if (sw / sh > cropRatio) { sw = sh * cropRatio; sx = (bmp.width - sw) / 2; }
+      else { sh = sw / cropRatio; sy = (bmp.height - sh) / 2; }
+    }
+    const scale = Math.min(1, 1200 / Math.max(sw, sh));
     const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bmp.width * scale);
-    canvas.height = Math.round(bmp.height * scale);
+    canvas.width = Math.round(sw * scale);
+    canvas.height = Math.round(sh * scale);
     const ctx = canvas.getContext("2d")!;
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
     bmp.close();
     return { dataUrl: canvas.toDataURL("image/jpeg", 0.82), width: canvas.width, height: canvas.height };
   } catch {
