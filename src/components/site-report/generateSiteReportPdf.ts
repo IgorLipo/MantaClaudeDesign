@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 import type { ReportFormData } from "./SiteReportForm";
 
 /**
@@ -171,27 +172,42 @@ export async function generateSiteReportPdf(
     drawMultiline("", data.follow_up_action);
   }
 
-  /* ── 7. Evidence Photos ── */
-  if (data.evidence_photos.length > 0) {
-    drawSectionHeader("Evidence of System Performance");
-    for (const url of data.evidence_photos) {
-      try {
-        const resp = await fetch(url);
-        const blob = await resp.blob();
-        const b64 = await blobToBase64(blob);
-        const imgType = blob.type.includes("png") ? "PNG" : "JPEG";
-        checkPage(75);
-        pdf.addImage(b64, imgType, ML, y, CW * 0.6, 65);
-        y += 70;
-      } catch {
-        checkPage(8);
+  /* ── 7. Photos: report evidence + every photo uploaded to the job ── */
+  // Two-column grid; each image keeps its real aspect ratio (no stretching).
+  const GAP = 6;
+  const COL_W = (CW - GAP) / 2;
+  const MAX_IMG_H = 110;
+  const drawPhotoGrid = async (title: string, urls: string[]) => {
+    if (urls.length === 0) return;
+    drawSectionHeader(title);
+    let col = 0;
+    let rowH = 0;
+    for (const url of urls) {
+      const img = await loadImage(url);
+      let w = COL_W;
+      let h = img ? (w * img.height) / img.width : 8;
+      if (img && h > MAX_IMG_H) { h = MAX_IMG_H; w = (h * img.width) / img.height; }
+      if (col === 0) checkPage(h + 4);
+      else if (y + h > H - 15) { y += rowH + GAP; col = 0; rowH = 0; checkPage(h + 4); }
+      const x = ML + col * (COL_W + GAP) + (COL_W - w) / 2;
+      if (img) {
+        pdf.addImage(img.dataUrl, "JPEG", x, y, w, h);
+      } else {
         pdf.setFontSize(8);
         pdf.setTextColor(...GRAY);
-        pdf.text("[Image could not be loaded]", ML + 2, y + 4);
-        y += 8;
+        pdf.text("[Image could not be loaded]", ML + col * (COL_W + GAP) + 2, y + 4);
       }
+      rowH = Math.max(rowH, h);
+      col = (col + 1) % 2;
+      if (col === 0) { y += rowH + GAP; rowH = 0; }
     }
-  }
+    if (col === 1) y += rowH + GAP;
+  };
+
+  await drawPhotoGrid("Evidence of System Performance", data.evidence_photos || []);
+
+  const groups = await fetchJobPhotoGroups(jobId);
+  for (const g of groups) await drawPhotoGrid(g.title, g.urls);
 
   /* ── Footer on last page ── */
   pdf.setFontSize(7);
@@ -202,10 +218,44 @@ export async function generateSiteReportPdf(
   return pdf.output("blob");
 }
 
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.readAsDataURL(blob);
-  });
+/** Loads an image, applies EXIF orientation and downsizes it so the PDF stays small. */
+async function loadImage(url: string): Promise<{ dataUrl: string; width: number; height: number } | null> {
+  try {
+    const blob = await (await fetch(url)).blob();
+    const bmp = await createImageBitmap(blob, { imageOrientation: "from-image" });
+    const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bmp.width * scale);
+    canvas.height = Math.round(bmp.height * scale);
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    bmp.close();
+    return { dataUrl: canvas.toDataURL("image/jpeg", 0.82), width: canvas.width, height: canvas.height };
+  } catch {
+    return null;
+  }
+}
+
+/** Every photo uploaded to the job, grouped the same way the job page shows them. */
+async function fetchJobPhotoGroups(jobId: string): Promise<{ title: string; urls: string[] }[]> {
+  const [{ data: photos }, { data: assignments }] = await Promise.all([
+    supabase.from("photos").select("url, uploader_id, photo_category, created_at").eq("job_id", jobId).order("created_at"),
+    supabase.from("job_assignments").select("scaffolder_id, assignment_role").eq("job_id", jobId),
+  ]);
+  if (!photos?.length) return [];
+  const engineers = new Set((assignments || []).filter((a) => a.assignment_role === "engineer").map((a) => a.scaffolder_id));
+  const scaffolders = new Set((assignments || []).filter((a) => a.assignment_role !== "engineer").map((a) => a.scaffolder_id));
+  const pick = (fn: (p: any) => boolean) => photos.filter(fn).map((p: any) => p.url).filter(Boolean);
+  const cat = (p: any) => p.photo_category;
+  const isEng = (p: any) => engineers.has(p.uploader_id);
+  const isScaf = (p: any) => scaffolders.has(p.uploader_id);
+  return [
+    { title: "Before Roof Work", urls: pick((p) => isEng(p) && cat(p) === "before") },
+    { title: "After Roof Work", urls: pick((p) => isEng(p) && cat(p) === "after") },
+    { title: "Before Scaffolding", urls: pick((p) => isScaf(p) && cat(p) === "before") },
+    { title: "After Scaffolding", urls: pick((p) => isScaf(p) && cat(p) === "after") },
+    { title: "Site Photos", urls: pick((p) => !(cat(p) === "before" || cat(p) === "after") || (!isEng(p) && !isScaf(p))) },
+  ];
 }
