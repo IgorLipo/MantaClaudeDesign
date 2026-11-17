@@ -8,6 +8,7 @@ import { ArrowLeft, Save, Send, Share2, ClipboardList, FileDown } from "lucide-r
 import { useToast } from "@/hooks/use-toast";
 import { logAudit } from "@/hooks/useAuditLog";
 import { notifySiteReportSubmitted } from "@/hooks/useNotificationTriggers";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import SiteReportForm, { type ReportFormData, type MaterialRow } from "@/components/site-report/SiteReportForm";
 import { generateSiteReportPdf } from "@/components/site-report/generateSiteReportPdf";
 
@@ -42,6 +43,8 @@ export default function SiteReport() {
   const [submitting, setSubmitting] = useState(false);
   const [reportStatus, setReportStatus] = useState("draft");
   const [panelCount, setPanelCount] = useState<number | null>(null);
+  const [jobInfo, setJobInfo] = useState<{ caseNo: string; title: string; address: string; lat: number | null; lng: number | null }>({ caseNo: "", title: "", address: "", lat: null, lng: null });
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Load existing report + job address
   useEffect(() => {
@@ -50,10 +53,11 @@ export default function SiteReport() {
       try {
 
       // Fetch job address + case_no + panel_count for prefill
-      const { data: job } = await supabase.from("jobs").select("address, case_no, panel_count").eq("id", jobId).maybeSingle();
+      const { data: job } = await supabase.from("jobs").select("address, case_no, panel_count, title, lat, lng").eq("id", jobId).maybeSingle();
       const jobAddress = job?.address || "";
       const jobCaseNo = (job as any)?.case_no || "";
       setPanelCount((job as any)?.panel_count ?? null);
+      setJobInfo({ caseNo: jobCaseNo, title: (job as any)?.title || "", address: jobAddress, lat: (job as any)?.lat ?? null, lng: (job as any)?.lng ?? null });
 
       // Fetch existing report
       const { data: report } = await (supabase as any)
@@ -68,7 +72,9 @@ export default function SiteReport() {
         setFormData({
           ...emptyForm(jobAddress, jobCaseNo),
           ...saved,
-          case_no: saved.case_no || jobCaseNo,
+          // Case no. always comes from the job so a report can never point at another case
+          case_no: jobCaseNo || saved.case_no || "",
+          address: jobAddress || saved.address || "",
           optimizer_no: saved.optimizer_no || report.optimizer_no || "",
           materials: Array.isArray(saved.materials) ? saved.materials : emptyForm(jobAddress, jobCaseNo).materials,
           evidence_photos: Array.isArray(photos.evidence_photos) ? photos.evidence_photos : (saved.evidence_photos || []),
@@ -239,12 +245,24 @@ export default function SiteReport() {
         )}
       </div>
 
+      {/* Which job this report belongs to */}
+      <div className="rounded-xl border-2 border-primary bg-primary/5 p-4">
+        <p className="text-[11px] font-mono uppercase tracking-[0.15em] text-primary">You are reporting on</p>
+        <p className="text-2xl font-semibold text-foreground tabular-nums">Case {jobInfo.caseNo || "-"}</p>
+        <p className="text-sm text-muted-foreground">{[jobInfo.title, jobInfo.address].filter(Boolean).join(" · ")}</p>
+        <p className="text-xs text-muted-foreground mt-1">Wrong job? Go back and open the right one before adding photos.</p>
+      </div>
+
       {/* Form */}
       <SiteReportForm
         data={formData}
         onChange={setFormData}
         jobId={jobId || ""}
         userId={user?.id || ""}
+        lockCaseNo={!!jobInfo.caseNo}
+        lockAddress={!!jobInfo.address}
+        jobLat={jobInfo.lat}
+        jobLng={jobInfo.lng}
       />
 
       {/* Actions */}
@@ -252,10 +270,25 @@ export default function SiteReport() {
         <Button variant="outline" className="flex-1" onClick={saveProgress} disabled={saving}>
           <Save className="h-4 w-4 mr-1" /> {saving ? "Saving..." : "Save Draft"}
         </Button>
-        <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={submitReport} disabled={submitting}>
+        <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={() => setConfirmOpen(true)} disabled={submitting}>
           <Send className="h-4 w-4 mr-1" /> {submitting ? "Submitting..." : reportStatus === "submitted" ? "Re-Submit" : "Submit"}
         </Button>
       </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Submit report for case {jobInfo.caseNo || formData.case_no}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {[jobInfo.title, jobInfo.address].filter(Boolean).join(" · ") || "This job"}. {formData.evidence_photos.length} photo(s) in the report. Check this is the job you visited.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go back</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfirmOpen(false); submitReport(); }}>Yes, submit</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

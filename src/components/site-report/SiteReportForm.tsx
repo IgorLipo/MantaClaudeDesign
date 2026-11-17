@@ -1,3 +1,4 @@
+import { photoDistanceKm, isFar } from "@/lib/photoLocation";
 import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,9 +63,13 @@ interface Props {
   onChange: (data: ReportFormData) => void;
   jobId: string;
   userId: string;
+  lockCaseNo?: boolean;
+  lockAddress?: boolean;
+  jobLat?: number | null;
+  jobLng?: number | null;
 }
 
-export default function SiteReportForm({ data, onChange, jobId, userId }: Props) {
+export default function SiteReportForm({ data, onChange, jobId, userId, lockCaseNo, lockAddress, jobLat, jobLng }: Props) {
   const { toast } = useToast();
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const evidenceInputRef = useRef<HTMLInputElement | null>(null);
@@ -87,6 +92,8 @@ export default function SiteReportForm({ data, onChange, jobId, userId }: Props)
   };
 
   const handleEvidenceUpload = async (file: File) => {
+    const km = await photoDistanceKm(file, jobLat, jobLng);
+    if (isFar(km) && !window.confirm(`This photo was taken ${km!.toFixed(1)} km from this job's address. Is it really for this job?`)) return;
     setUploadingEvidence(true);
     const ext = file.name.split(".").pop();
     const path = `${jobId}/report/evidence_${Date.now()}.${ext}`;
@@ -123,11 +130,11 @@ export default function SiteReportForm({ data, onChange, jobId, userId }: Props)
             </Field>
           </div>
           <Field label="Address">
-            <Textarea value={data.address} onChange={(e) => set("address", e.target.value)} rows={2} placeholder="Site address" />
+            <Textarea value={data.address} onChange={(e) => set("address", e.target.value)} rows={2} placeholder="Site address" readOnly={lockAddress} className={lockAddress ? "bg-muted" : undefined} />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Case No.">
-              <Input value={data.case_no} onChange={(e) => set("case_no", e.target.value)} placeholder="e.g. SE-2025-001" />
+              <Input value={data.case_no} onChange={(e) => set("case_no", e.target.value)} placeholder="e.g. SE-2025-001" readOnly={lockCaseNo} className={lockCaseNo ? "bg-muted font-semibold" : undefined} title={lockCaseNo ? "Set by the job, cannot be changed" : undefined} />
             </Field>
             <Field label="Site ID">
               <Input value={data.site_id} onChange={(e) => set("site_id", e.target.value)} placeholder="e.g. S-12345" />

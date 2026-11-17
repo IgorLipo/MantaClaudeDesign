@@ -1,3 +1,4 @@
+import { photoDistanceKm, isFar } from "@/lib/photoLocation";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -341,6 +342,8 @@ export default function JobDetail() {
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, category: string = "general") => {
     const file = e.target.files?.[0];
     if (!file || !id || !user) return;
+    const km = await photoDistanceKm(file, job?.lat, job?.lng);
+    if (isFar(km) && !window.confirm(`This photo was taken ${km!.toFixed(1)} km from this job's address. Is it really for this job (case ${job?.case_no || ""})?`)) { e.target.value = ""; return; }
     setUploading(true);
     const ext = file.name.split(".").pop();
     const path = `${id}/${Date.now()}.${ext}`;
@@ -1064,6 +1067,8 @@ export default function JobDetail() {
       }
       const { generateSiteReportPdf } = await import("@/components/site-report/generateSiteReportPdf");
       const reportData = report.report_data;
+      // Case no. on the PDF always comes from the job, never from what was typed
+      if (job?.case_no) reportData.case_no = job.case_no;
       // Ensure evidence_photos from report_photos
       if (report.report_photos?.evidence_photos) {
         reportData.evidence_photos = report.report_photos.evidence_photos;
