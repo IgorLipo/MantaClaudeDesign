@@ -177,33 +177,108 @@ export async function generateSiteReportPdf(
     y += 2;
   }
 
-  /* ── Safety checklist ── */
+  // Rough height of the whole safety block, so it starts on a fresh page instead of splitting
+  const safetyH = () => (BOTTOM - TOP > 140 ? 140 : 30);
+  /* ── Safety checklist: pre-work safety record (summary banner, grouped check table, sign-off) ── */
   const { data: safety } = await (supabase as any).from("safety_checklists")
     .select("items, notes, completed, completed_at, updated_at").eq("job_id", jobId).eq("completed", true)
     .order("updated_at", { ascending: false }).limit(1).maybeSingle();
-  section("Safety Checklist", 16);
+  section("Pre-Work Safety Checklist", safetyH());
+  const GREEN: RGB = [21, 128, 61];
+  const RED: RGB = [185, 28, 28];
   if (!safety) {
-    font(9, "bold", [185, 28, 28]);
-    pdf.text("Not completed", M, y + 3);
-    y += 7;
+    pdf.setFillColor(254, 242, 242);
+    pdf.rect(M, y, CW, 12, "F");
+    pdf.setFillColor(...RED);
+    pdf.rect(M, y, 1.2, 12, "F");
+    font(9, "bold", RED);
+    pdf.text("NOT COMPLETED", M + 5, y + 5);
+    font(8, "normal", BODY);
+    pdf.text("No pre-work safety checklist was recorded for this visit.", M + 5, y + 9.4);
+    y += 17;
   } else {
     const done = new Set((safety.items || []).filter((i: any) => i.checked).map((i: any) => i.id));
-    const half = CW / 2;
-    SAFETY_ITEMS.forEach((item, i) => {
-      if (i % 2 === 0) ensure(5.5);
-      const x = M + (i % 2) * half;
-      const ok = done.has(item.id);
-      font(8.5, "bold", ok ? [21, 128, 61] : [185, 28, 28]);
-      pdf.text(ok ? "Yes" : "No", x, y + 3);
-      font(8.5, "normal", INK);
-      pdf.text(item.label, x + 9, y + 3);
-      if (i % 2 === 1 || i === SAFETY_ITEMS.length - 1) y += 5.5;
-    });
+    const passed = SAFETY_ITEMS.filter((i) => done.has(i.id)).length;
+    const allOk = passed === SAFETY_ITEMS.length;
     const when = safety.completed_at || safety.updated_at;
+    const tone: RGB = allOk ? GREEN : RED;
+
+    // Summary banner
+    pdf.setFillColor(...(allOk ? ([240, 253, 244] as RGB) : ([254, 242, 242] as RGB)));
+    pdf.rect(M, y, CW, 12, "F");
+    pdf.setFillColor(...tone);
+    pdf.rect(M, y, 1.2, 12, "F");
+    font(9, "bold", tone);
+    pdf.text(allOk ? "ALL CHECKS PASSED" : `${SAFETY_ITEMS.length - passed} CHECK(S) NOT CONFIRMED`, M + 5, y + 5);
+    font(8, "normal", BODY);
+    pdf.text(`${passed} of ${SAFETY_ITEMS.length} checks confirmed`, M + 5, y + 9.4);
+    font(7, "normal", MUTED);
+    pdf.text("COMPLETED", W - M - 4, y + 4.6, { align: "right", charSpace: 0.3 });
+    font(8.5, "bold", INK);
+    pdf.text(when ? new Date(when).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "-", W - M - 4, y + 9.4, { align: "right" });
+    y += 16;
+
+    // Check table, grouped by category
+    const GROUPS: [string, string][] = [["personal", "Personal Safety"], ["site", "Site Conditions"], ["emergency", "Emergency Preparedness"], ["docs", "Briefing & Records"]];
+    const cx = [M + 3, M + 52, W - M - 3];
+    pdf.setFillColor(...NAVY);
+    pdf.rect(M, y, CW, 8, "F");
+    font(6.8, "bold", [255, 255, 255]);
+    pdf.text("CHECK", cx[0], y + 5.2, { charSpace: 0.3 });
+    pdf.text("REQUIREMENT", cx[1], y + 5.2, { charSpace: 0.3 });
+    pdf.text("RESULT", cx[2], y + 5.2, { align: "right", charSpace: 0.3 });
+    y += 8;
+    for (const [key, name] of GROUPS) {
+      const items = SAFETY_ITEMS.filter((i) => i.section === key);
+      if (!items.length) continue;
+      ensure(6 + 8);
+      pdf.setFillColor(...PANEL);
+      pdf.rect(M, y, CW, 6, "F");
+      font(6.8, "bold", MUTED);
+      pdf.text(name.toUpperCase(), cx[0], y + 4.1, { charSpace: 0.4 });
+      y += 6;
+      for (const item of items) {
+        const ok = done.has(item.id);
+        font(7.6, "normal", BODY);
+        const desc: string[] = pdf.splitTextToSize(item.description, 100);
+        const rh = Math.max(8, desc.length * 3.4 + 4.4);
+        ensure(rh);
+        font(8.2, "bold", INK);
+        pdf.text(item.label, cx[0], y + 5);
+        font(7.6, "normal", BODY);
+        pdf.text(desc, cx[1], y + 5);
+        // Result pill
+        const pw = 15, ph = 5, px = cx[2] - pw, py = y + (rh - ph) / 2;
+        pdf.setFillColor(...(ok ? ([220, 252, 231] as RGB) : ([254, 226, 226] as RGB)));
+        pdf.roundedRect(px, py, pw, ph, 2.5, 2.5, "F");
+        font(6.6, "bold", ok ? GREEN : RED);
+        pdf.text(ok ? "PASS" : "NOT DONE", px + pw / 2, py + 3.5, { align: "center" });
+        y += rh;
+        pdf.setDrawColor(...RULE);
+        pdf.setLineWidth(0.2);
+        pdf.line(M, y, W - M, y);
+      }
+    }
+    y += 4;
+
+    // Notes + sign-off
+    if (safety.notes) {
+      font(8.5, "normal", INK);
+      const lines: string[] = pdf.splitTextToSize(safety.notes, CW - 10);
+      const bh = lines.length * 4.2 + 9;
+      ensure(bh);
+      pdf.setFillColor(...PANEL);
+      pdf.rect(M, y, CW, bh, "F");
+      font(6.8, "bold", MUTED);
+      pdf.text("SAFETY NOTES", M + 4, y + 4.5, { charSpace: 0.3 });
+      font(8.5, "normal", INK);
+      pdf.text(lines, M + 4, y + 8.6);
+      y += bh + 3;
+    }
+    ensure(8);
     font(7.5, "normal", MUTED);
-    pdf.text(`Completed ${when ? new Date(when).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : ""}`, M, y + 3);
+    pdf.text(`Confirmed on site by ${data.engineer_name || "the engineer"} before work started.`, M, y + 3);
     y += 6;
-    if (safety.notes) paragraph(`Notes: ${safety.notes}`);
   }
 
   if (data.engineer_comments) { section("Comments from Engineers / Attendees"); paragraph(data.engineer_comments); }
