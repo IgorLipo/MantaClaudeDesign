@@ -181,7 +181,7 @@ export async function generateSiteReportPdf(
   const safetyH = () => (BOTTOM - TOP > 140 ? 140 : 30);
   /* ── Safety checklist: pre-work safety record (summary banner, grouped check table, sign-off) ── */
   const { data: safety } = await (supabase as any).from("safety_checklists")
-    .select("items, notes, completed, completed_at, updated_at").eq("job_id", jobId).eq("completed", true)
+    .select("items, notes, completed, completed_at, updated_at, engineer_id").eq("job_id", jobId).eq("completed", true)
     .order("updated_at", { ascending: false }).limit(1).maybeSingle();
   section("Pre-Work Safety Checklist", safetyH());
   const GREEN: RGB = [21, 128, 61];
@@ -263,21 +263,23 @@ export async function generateSiteReportPdf(
 
     // Notes + sign-off
     if (safety.notes) {
-      font(8.5, "normal", INK);
-      const lines: string[] = pdf.splitTextToSize(safety.notes, CW - 10);
-      const bh = lines.length * 4.2 + 9;
-      ensure(bh);
-      pdf.setFillColor(...PANEL);
-      pdf.rect(M, y, CW, bh, "F");
+      ensure(12);
       font(6.8, "bold", MUTED);
-      pdf.text("SAFETY NOTES", M + 4, y + 4.5, { charSpace: 0.3 });
-      font(8.5, "normal", INK);
-      pdf.text(lines, M + 4, y + 8.6);
-      y += bh + 3;
+      pdf.text("SAFETY NOTES", M, y + 3, { charSpace: 0.3 });
+      y += 5;
+      paragraph(safety.notes); // paginates line by line, never truncates
     }
+    // Sign-off names the account that saved the checklist, not the typed engineer name
+    const { data: who } = await supabase.from("profiles").select("first_name, last_name").eq("user_id", safety.engineer_id).maybeSingle();
+    const signer = who ? `${who.first_name || ""} ${who.last_name || ""}`.trim() : "";
     ensure(8);
     font(7.5, "normal", MUTED);
-    pdf.text(`Confirmed on site by ${data.engineer_name || "the engineer"} before work started.`, M, y + 3);
+    pdf.text(
+      allOk && when
+        ? `Confirmed on site by ${signer || "the assigned engineer"} on ${new Date(when).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}.`
+        : `Checklist record incomplete: ${SAFETY_ITEMS.length - passed} check(s) not confirmed.`,
+      M, y + 3
+    );
     y += 6;
   }
 
