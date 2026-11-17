@@ -91,22 +91,24 @@ export default function SiteReportForm({ data, onChange, jobId, userId, lockCase
     set("materials", updated.length === 0 ? [emptyMaterial()] : updated);
   };
 
-  const handleEvidenceUpload = async (file: File) => {
-    const km = await photoDistanceKm(file, jobLat, jobLng);
-    if (isFar(km) && !window.confirm(`This photo was taken ${km!.toFixed(1)} km from this job's address. Is it really for this job?`)) return;
+  const handleEvidenceUpload = async (files: File[]) => {
     setUploadingEvidence(true);
-    const ext = file.name.split(".").pop();
-    const path = `${jobId}/report/evidence_${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("job-photos").upload(path, file);
-    if (error) {
-      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
-      setUploadingEvidence(false);
-      return;
+    const added: string[] = [];
+    for (const [i, file] of files.entries()) {
+      const km = await photoDistanceKm(file, jobLat, jobLng);
+      if (isFar(km) && !window.confirm(`"${file.name}" was taken ${km!.toFixed(1)} km from this job's address. Is it really for this job?`)) continue;
+      const ext = file.name.split(".").pop();
+      const path = `${jobId}/report/evidence_${Date.now()}_${i}.${ext}`;
+      const { error } = await supabase.storage.from("job-photos").upload(path, file);
+      if (error) {
+        toast({ title: `Upload failed: ${file.name}`, description: error.message, variant: "destructive" });
+        continue;
+      }
+      added.push(supabase.storage.from("job-photos").getPublicUrl(path).data.publicUrl);
     }
-    const { data: urlData } = supabase.storage.from("job-photos").getPublicUrl(path);
-    set("evidence_photos", [...data.evidence_photos, urlData.publicUrl]);
+    if (added.length) set("evidence_photos", [...data.evidence_photos, ...added]);
     setUploadingEvidence(false);
-    toast({ title: "Photo added" });
+    if (added.length) toast({ title: added.length === 1 ? "Photo added" : `${added.length} photos added` });
   };
 
   const removeEvidence = (idx: number) => {
@@ -292,8 +294,8 @@ export default function SiteReportForm({ data, onChange, jobId, userId, lockCase
             ))}
             <div className="cursor-pointer">
               <input
-                type="file" accept="image/*,.pdf,application/pdf" className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleEvidenceUpload(f); }}
+                type="file" multiple accept="image/*,.pdf,application/pdf" className="hidden"
+                onChange={(e) => { const f = Array.from(e.target.files || []); e.target.value = ""; if (f.length) handleEvidenceUpload(f); }}
                 disabled={uploadingEvidence}
                 ref={evidenceInputRef}
               />

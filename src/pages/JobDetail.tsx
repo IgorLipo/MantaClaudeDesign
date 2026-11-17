@@ -340,24 +340,30 @@ export default function JobDetail() {
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, category: string = "general") => {
-    const file = e.target.files?.[0];
-    if (!file || !id || !user) return;
-    const km = await photoDistanceKm(file, job?.lat, job?.lng);
-    if (isFar(km) && !window.confirm(`This photo was taken ${km!.toFixed(1)} km from this job's address. Is it really for this job (case ${job?.case_no || ""})?`)) { e.target.value = ""; return; }
+    const files = Array.from(e.target.files || []);
+    e.target.value = ""; // allow picking the same files again
+    if (!files.length || !id || !user) return;
     setUploading(true);
-    const ext = file.name.split(".").pop();
-    const path = `${id}/${Date.now()}.${ext}`;
-    const { error: uploadErr } = await supabase.storage.from("job-photos").upload(path, file);
-    if (uploadErr) {
-      toast({ title: "Upload failed", description: uploadErr.message, variant: "destructive" });
-      setUploading(false);
-      return;
+    let ok = 0;
+    for (const [i, file] of files.entries()) {
+      const km = await photoDistanceKm(file, job?.lat, job?.lng);
+      if (isFar(km) && !window.confirm(`"${file.name}" was taken ${km!.toFixed(1)} km from this job's address. Is it really for this job (case ${job?.case_no || ""})?`)) continue;
+      const ext = file.name.split(".").pop();
+      const path = `${id}/${Date.now()}_${i}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("job-photos").upload(path, file);
+      if (uploadErr) {
+        toast({ title: `Upload failed: ${file.name}`, description: uploadErr.message, variant: "destructive" });
+        continue;
+      }
+      const { data: urlData } = supabase.storage.from("job-photos").getPublicUrl(path);
+      await supabase.from("photos").insert({ job_id: id, uploader_id: user.id, url: urlData.publicUrl, review_status: "pending", photo_category: category } as any);
+      ok++;
     }
-    const { data: urlData } = supabase.storage.from("job-photos").getPublicUrl(path);
-    await supabase.from("photos").insert({ job_id: id, uploader_id: user.id, url: urlData.publicUrl, review_status: "pending", photo_category: category } as any);
-    toast({ title: "Photo uploaded" });
-    logAudit(user.id, "photo_upload", "photo", id);
-    notifyPhotoUploaded(id, job.title, adminIds);
+    if (ok) {
+      toast({ title: ok === 1 ? "Photo uploaded" : `${ok} photos uploaded` });
+      logAudit(user.id, "photo_upload", "photo", id, { count: ok });
+      notifyPhotoUploaded(id, job.title, adminIds);
+    }
     setUploading(false);
     // Re-fetch photos only, preserve current job state
     const { data: freshPhotos } = await supabase.from("photos").select("*").eq("job_id", id).order("created_at", { ascending: false });
@@ -1617,6 +1623,7 @@ export default function JobDetail() {
                 <div className="mb-3">
                   <input
                     type="file"
+                    multiple
                     accept="image/*"
                     className="hidden"
                     onChange={handlePhotoUpload}
@@ -1686,6 +1693,7 @@ export default function JobDetail() {
                   <>
                     <input
                       type="file"
+                      multiple
                       accept="image/*"
                       className="hidden"
                       onChange={(e) => handlePhotoUpload(e, "before")}
@@ -1723,6 +1731,7 @@ export default function JobDetail() {
                   <>
                     <input
                       type="file"
+                      multiple
                       accept="image/*"
                       className="hidden"
                       onChange={(e) => handlePhotoUpload(e, "after")}
@@ -1774,6 +1783,7 @@ export default function JobDetail() {
                   <>
                     <input
                       type="file"
+                      multiple
                       accept="image/*"
                       className="hidden"
                       onChange={(e) => handlePhotoUpload(e, "before")}
@@ -1811,6 +1821,7 @@ export default function JobDetail() {
                   <>
                     <input
                       type="file"
+                      multiple
                       accept="image/*"
                       className="hidden"
                       onChange={(e) => handlePhotoUpload(e, "after")}
