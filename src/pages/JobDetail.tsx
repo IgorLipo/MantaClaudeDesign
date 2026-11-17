@@ -1405,6 +1405,13 @@ export default function JobDetail() {
       {/* Scheduling Panel — admin + scaffolder only (engineer doesn't need owner-confirmation status) */}
       {showScheduling && role !== "owner" && role !== "engineer" && <SchedulingPanel job={job} role={role} onUpdate={fetchAll} />}
 
+      {/* Admin: flag a report that has no safety checklist */}
+      {role === "admin" && siteReport && !safetyChecklistData?.completed && (
+        <div className="rounded-xl border border-destructive/50 bg-destructive/5 p-3 text-sm font-medium text-destructive">
+          No safety checklist for this job. The engineer has not completed it.
+        </div>
+      )}
+
       {/* Safety Checklist — native display (admin + engineer) */}
       {safetyChecklistData && (role === "admin" || role === "engineer") && (
         <Card className="card-elevated border-emerald-500/20">

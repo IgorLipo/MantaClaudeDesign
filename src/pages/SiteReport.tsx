@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { logAudit } from "@/hooks/useAuditLog";
 import { notifySiteReportSubmitted } from "@/hooks/useNotificationTriggers";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import SafetyChecklistDialog from "@/components/jobs/SafetyChecklistDialog";
 import SiteReportForm, { type ReportFormData, type MaterialRow } from "@/components/site-report/SiteReportForm";
 import { generateSiteReportPdf } from "@/components/site-report/generateSiteReportPdf";
 
@@ -45,6 +46,17 @@ export default function SiteReport() {
   const [panelCount, setPanelCount] = useState<number | null>(null);
   const [jobInfo, setJobInfo] = useState<{ caseNo: string; title: string; address: string; lat: number | null; lng: number | null }>({ caseNo: "", title: "", address: "", lat: null, lng: null });
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [safetyDone, setSafetyDone] = useState(false);
+  const [safetyOpen, setSafetyOpen] = useState(false);
+  const mustDoSafety = role === "engineer";
+
+  const loadSafety = async () => {
+    if (!jobId || !user) return;
+    const { data } = await (supabase as any).from("safety_checklists").select("completed")
+      .eq("job_id", jobId).eq("engineer_id", user.id).maybeSingle();
+    setSafetyDone(!!data?.completed);
+  };
+  useEffect(() => { loadSafety(); }, [jobId, user]);
 
   // Load existing report + job address
   useEffect(() => {
@@ -137,6 +149,11 @@ export default function SiteReport() {
 
   const submitReport = async () => {
     if (!user || !jobId) return;
+    if (mustDoSafety && !safetyDone) {
+      toast({ title: "Safety checklist required", description: "Complete the safety checklist before submitting the report.", variant: "destructive" });
+      setSafetyOpen(true);
+      return;
+    }
     
     // Validate only required fields
     if (!formData.engineer_name.trim()) {
@@ -253,6 +270,19 @@ export default function SiteReport() {
         <p className="text-xs text-muted-foreground mt-1">Wrong job? Go back and open the right one before adding photos.</p>
       </div>
 
+      {/* Step 1: safety checklist (mandatory before submit) */}
+      <div className={`rounded-xl border p-4 flex items-center justify-between gap-3 ${safetyDone ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/50 bg-destructive/5"}`}>
+        <div>
+          <p className="text-sm font-semibold text-foreground">{safetyDone ? "Safety checklist completed" : "Safety checklist required"}</p>
+          <p className="text-xs text-muted-foreground">{safetyDone ? "It will be included in the PDF." : "You cannot submit this report until it is done."}</p>
+        </div>
+        {mustDoSafety && (
+          <Button size="sm" variant={safetyDone ? "outline" : "default"} onClick={() => setSafetyOpen(true)}>
+            {safetyDone ? "View / edit" : "Start checklist"}
+          </Button>
+        )}
+      </div>
+
       {/* Form */}
       <SiteReportForm
         data={formData}
@@ -270,10 +300,15 @@ export default function SiteReport() {
         <Button variant="outline" className="flex-1" onClick={saveProgress} disabled={saving}>
           <Save className="h-4 w-4 mr-1" /> {saving ? "Saving..." : "Save Draft"}
         </Button>
-        <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={() => setConfirmOpen(true)} disabled={submitting}>
+        <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={() => (mustDoSafety && !safetyDone ? submitReport() : setConfirmOpen(true))} disabled={submitting}>
           <Send className="h-4 w-4 mr-1" /> {submitting ? "Submitting..." : reportStatus === "submitted" ? "Re-Submit" : "Submit"}
         </Button>
       </div>
+
+      {mustDoSafety && user?.id && jobId && (
+        <SafetyChecklistDialog open={safetyOpen} onOpenChange={setSafetyOpen} jobId={jobId} engineerId={user.id}
+          onComplete={() => { setSafetyOpen(false); loadSafety(); }} />
+      )}
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>

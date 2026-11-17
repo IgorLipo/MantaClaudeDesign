@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ReportFormData } from "./SiteReportForm";
+import { SAFETY_ITEMS } from "@/components/jobs/SafetyChecklistDialog";
 import { REPORT_LOGO_PNG, REPORT_LOGO_RATIO } from "./reportLogo";
 
 type RGB = readonly [number, number, number];
@@ -176,6 +177,35 @@ export async function generateSiteReportPdf(
     y += 2;
   }
 
+  /* ── Safety checklist ── */
+  const { data: safety } = await (supabase as any).from("safety_checklists")
+    .select("items, notes, completed, completed_at, updated_at").eq("job_id", jobId).eq("completed", true)
+    .order("updated_at", { ascending: false }).limit(1).maybeSingle();
+  section("Safety Checklist", 16);
+  if (!safety) {
+    font(9, "bold", [185, 28, 28]);
+    pdf.text("Not completed", M, y + 3);
+    y += 7;
+  } else {
+    const done = new Set((safety.items || []).filter((i: any) => i.checked).map((i: any) => i.id));
+    const half = CW / 2;
+    SAFETY_ITEMS.forEach((item, i) => {
+      if (i % 2 === 0) ensure(5.5);
+      const x = M + (i % 2) * half;
+      const ok = done.has(item.id);
+      font(8.5, "bold", ok ? [21, 128, 61] : [185, 28, 28]);
+      pdf.text(ok ? "Yes" : "No", x, y + 3);
+      font(8.5, "normal", INK);
+      pdf.text(item.label, x + 9, y + 3);
+      if (i % 2 === 1 || i === SAFETY_ITEMS.length - 1) y += 5.5;
+    });
+    const when = safety.completed_at || safety.updated_at;
+    font(7.5, "normal", MUTED);
+    pdf.text(`Completed ${when ? new Date(when).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : ""}`, M, y + 3);
+    y += 6;
+    if (safety.notes) paragraph(`Notes: ${safety.notes}`);
+  }
+
   if (data.engineer_comments) { section("Comments from Engineers / Attendees"); paragraph(data.engineer_comments); }
   if (data.follow_up_action) { section("Follow-Up Action"); paragraph(data.follow_up_action); }
 
@@ -294,7 +324,10 @@ async function loadImage(
 /** Reads QR / barcodes on the photo (SolarEdge labels encode the serial). Works on iPhone Safari too. */
 async function readCodes(bmp: ImageBitmap): Promise<string[]> {
   try {
-    const { BarcodeDetector } = await import("barcode-detector/ponyfill");
+    const { BarcodeDetector, prepareZXingModule } = await import("barcode-detector/ponyfill");
+    // Serve the decoder from our own build instead of a third-party CDN
+    const { default: wasmUrl } = await import("zxing-wasm/reader/zxing_reader.wasm?url");
+    prepareZXingModule({ overrides: { locateFile: (p: string) => (p.endsWith(".wasm") ? wasmUrl : p) } });
     const det = new BarcodeDetector({ formats: ["qr_code", "data_matrix", "code_128"] });
     const found = new Set((await det.detect(bmp)).map((c) => c.rawValue));
     // Very large photos can hide small labels from the decoder; retry on smaller copies
@@ -318,12 +351,10 @@ const norm = (v: string) => v.toUpperCase().replace(/[^A-Z0-9]/g, "");
 /** Finds the materials row whose old or new serial appears in a code read from the photo. */
 function matchMaterial<T extends { serial_old: string; serial_new: string }>(codes: string[], mats: T[]): T | null {
   const read = codes.map(norm);
-  for (const m of mats) {
-    for (const serial of [m.serial_old, m.serial_new].map((x) => norm(x || ""))) {
-      if (serial.length >= 6 && read.some((c) => c.includes(serial))) return m;
-    }
-  }
-  return null;
+  const hits = mats.filter((m) =>
+    [m.serial_old, m.serial_new].map((x) => norm(x || "")).some((serial) => serial.length >= 8 && read.some((c) => c.endsWith(serial)))
+  );
+  return hits.length === 1 ? hits[0] : null; // ambiguous or no match: keep the generic caption
 }
 
 /** Every photo uploaded to the job, grouped the same way the job page shows them. */

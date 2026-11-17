@@ -25,7 +25,7 @@ interface SafetyItem {
   section: "personal" | "site" | "emergency" | "docs";
 }
 
-const SAFETY_ITEMS: SafetyItem[] = [
+export const SAFETY_ITEMS: SafetyItem[] = [
   // Personal Safety
   { id: "ppe", label: "PPE worn", description: "Hard hat, harness, gloves, steel-toe boots, high-vis vest", icon: HardHat, section: "personal" },
   { id: "ladder", label: "Ladder safety", description: "Secure, stable ground, correct 4:1 angle ratio", icon: ShieldCheck, section: "personal" },
