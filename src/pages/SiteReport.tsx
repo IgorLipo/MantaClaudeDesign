@@ -52,11 +52,13 @@ export default function SiteReport() {
 
   const loadSafety = async () => {
     if (!jobId || !user) return;
-    const { data } = await (supabase as any).from("safety_checklists").select("completed")
-      .eq("job_id", jobId).eq("engineer_id", user.id).maybeSingle();
-    setSafetyDone(!!data?.completed);
+    // Engineers see their own checklist; admins see any completed checklist on the job
+    let q = (supabase as any).from("safety_checklists").select("completed").eq("job_id", jobId).eq("completed", true);
+    if (role === "engineer") q = q.eq("engineer_id", user.id);
+    const { data } = await q.limit(1);
+    setSafetyDone(!!data?.length);
   };
-  useEffect(() => { loadSafety(); }, [jobId, user]);
+  useEffect(() => { loadSafety(); }, [jobId, user, role]);
 
   // Load existing report + job address
   useEffect(() => {
