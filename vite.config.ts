@@ -18,11 +18,11 @@ export default defineConfig(() => ({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico"],
       manifest: {
-        name: "Manta Ray Energy",
-        short_name: "MantaRay",
+        name: "MantaRayEnergy",
+        short_name: "MantaRayEnergy",
         description: "UK solar installation operations platform",
         theme_color: "#F97316",
-        background_color: "#0f172a",
+        background_color: "#000000",
         display: "standalone",
         orientation: "portrait",
         scope: "/",
@@ -39,7 +39,7 @@ export default defineConfig(() => ({
             type: "image/png",
           },
           {
-            src: "/pwa-512.png",
+            src: "/pwa-maskable-512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",
